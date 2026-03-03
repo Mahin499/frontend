@@ -12,6 +12,7 @@ import {
     CalendarDays,
     Clock,
     CalendarRange,
+    CalendarCheck,
     Cpu,
     LogOut,
     Menu,
@@ -25,6 +26,7 @@ const navItems = [
     { href: "/students", icon: GraduationCap, label: "Students" },
     { href: "/classes", icon: BookOpen, label: "Classes" },
     { href: "/session", icon: Video, label: "Live Session" },
+    { href: "/meetings", icon: CalendarCheck, label: "Meetings" },
 ];
 
 const reportItems = [
