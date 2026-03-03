@@ -216,7 +216,7 @@ export default function DashboardPage() {
                                     </div>
                                     <ChevronRight size={16} className="text-slate-400 group-hover:text-primary" />
                                 </Link>
-                                <Link href="/meetings" className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
+                                <Link href="/settings" className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
                                             <Settings size={18} />

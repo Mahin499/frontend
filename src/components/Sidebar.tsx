@@ -13,6 +13,7 @@ import {
     Clock,
     CalendarRange,
     CalendarCheck,
+    Settings2,
     Cpu,
     LogOut,
     Menu,
@@ -27,6 +28,7 @@ const navItems = [
     { href: "/classes", icon: BookOpen, label: "Classes" },
     { href: "/session", icon: Video, label: "Live Session" },
     { href: "/meetings", icon: CalendarCheck, label: "Meetings" },
+    { href: "/settings", icon: Settings2, label: "Settings" },
 ];
 
 const reportItems = [
