@@ -198,7 +198,7 @@ export default function DashboardPage() {
                         <div className="bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark p-6 shadow-sm">
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Quick Actions</h3>
                             <div className="space-y-3">
-                                <button className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
+                                <Link href="/faculty" className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-primary">
                                             <UserPlus size={18} />
@@ -206,7 +206,7 @@ export default function DashboardPage() {
                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Approve Faculty</span>
                                     </div>
                                     <ChevronRight size={16} className="text-slate-400 group-hover:text-primary" />
-                                </button>
+                                </Link>
                                 <Link href="/reports/monthly" className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
@@ -216,7 +216,7 @@ export default function DashboardPage() {
                                     </div>
                                     <ChevronRight size={16} className="text-slate-400 group-hover:text-primary" />
                                 </Link>
-                                <button className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
+                                <Link href="/meetings" className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
                                             <Settings size={18} />
@@ -224,7 +224,7 @@ export default function DashboardPage() {
                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Institute Settings</span>
                                     </div>
                                     <ChevronRight size={16} className="text-slate-400 group-hover:text-primary" />
-                                </button>
+                                </Link>
                             </div>
                         </div>
 
@@ -240,7 +240,7 @@ export default function DashboardPage() {
                                     <div>
                                         <p className="text-sm font-medium text-slate-900 dark:text-white">Unexpected Absence Spike</p>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Grade 11-B shows 45% absence today.</p>
-                                        <button className="text-xs font-semibold text-primary mt-2 hover:underline">Investigate</button>
+                                        <Link href="/reports/daily" className="text-xs font-semibold text-primary mt-2 hover:underline inline-block">Investigate</Link>
                                     </div>
                                 </div>
                                 <div className="flex gap-3 items-start pb-4 border-b border-border-light dark:border-border-dark last:border-0 last:pb-0">
@@ -248,7 +248,7 @@ export default function DashboardPage() {
                                     <div>
                                         <p className="text-sm font-medium text-slate-900 dark:text-white">Unrecognized ID</p>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Gate 3 Sensor detected unknown ID card.</p>
-                                        <button className="text-xs font-semibold text-primary mt-2 hover:underline">View Log</button>
+                                        <Link href="/ai-validation" className="text-xs font-semibold text-primary mt-2 hover:underline inline-block">View Log</Link>
                                     </div>
                                 </div>
                             </div>
@@ -274,9 +274,9 @@ export default function DashboardPage() {
                                 <div className="h-8 w-8 rounded-full ring-2 ring-blue-600 bg-slate-300 flex items-center justify-center text-slate-600 text-xs font-bold">AS</div>
                                 <div className="h-8 w-8 rounded-full ring-2 ring-blue-600 bg-white/20 flex items-center justify-center text-xs font-medium text-white">+5</div>
                             </div>
-                            <button className="w-full py-2 bg-white text-primary font-semibold rounded-lg text-sm hover:bg-blue-50 transition-colors">
+                            <Link href="/meetings" className="block w-full py-2 bg-white text-primary font-semibold rounded-lg text-sm hover:bg-blue-50 transition-colors text-center">
                                 View Details
-                            </button>
+                            </Link>
                         </div>
                     </div>
                 </div>
