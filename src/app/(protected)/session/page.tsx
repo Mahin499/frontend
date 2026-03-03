@@ -9,16 +9,11 @@ import {
     Loader2, Users, Wifi, WifiOff, RefreshCcw
 } from "lucide-react";
 import {
-    fetchClasses, fetchStudentsByClass, markAttendance,
+    fetchClasses, fetchStudentsByClass, markAttendance, getInsforgeClient,
     Class, Student
 } from "@/utils/insforge/client";
 
-// Insforge Edge Function powers the AI engine (Gemini Vision)
-const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL ||
-    (process.env.NEXT_PUBLIC_INSFORGE_BASE_URL
-        ? `${process.env.NEXT_PUBLIC_INSFORGE_BASE_URL}/functions/v1/ai-engine`
-        : "http://localhost:8000");
-const SCAN_INTERVAL_MS = 4000; // 4s intervals (Gemini needs more time)
+const SCAN_INTERVAL_MS = 4000; // 4s intervals (Gemini needs time)
 
 interface RecognitionResult {
     student_id?: string;
@@ -67,8 +62,10 @@ export default function LiveSessionPage() {
             })
             .catch(console.error);
 
-        fetch(`${AI_SERVICE_URL}/health`, { signal: AbortSignal.timeout(3000) })
-            .then(r => setAiServiceOnline(r.ok))
+        // Health check via Insforge SDK (correct URL automatically)
+        const insforge = getInsforgeClient();
+        insforge.functions.invoke("ai-engine", { method: "GET" })
+            .then(({ data, error }) => setAiServiceOnline(!error && data?.status === "ok"))
             .catch(() => setAiServiceOnline(false));
     }, []);
 
@@ -125,19 +122,17 @@ export default function LiveSessionPage() {
         const t0 = Date.now();
 
         try {
-            const res = await fetch(`${AI_SERVICE_URL}/api/recognize`, {
+            const insforge = getInsforgeClient();
+            const { data, error } = await insforge.functions.invoke("ai-engine", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+                body: {
                     image_base64: screenshot,
                     known_faces: knownFaces,
                     confidence_threshold: 60,
-                }),
-                signal: AbortSignal.timeout(25000), // Gemini needs up to 20s
+                },
             });
 
-            if (!res.ok) return;
-            const data = await res.json();
+            if (error || !data) { setAiServiceOnline(false); return; }
             setLastScanMs(Date.now() - t0);
             setAiServiceOnline(true);
 
