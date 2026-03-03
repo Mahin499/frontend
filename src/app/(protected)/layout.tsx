@@ -15,7 +15,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         const insforge = getInsforgeClient();
         insforge.auth.getCurrentSession().then(({ data }) => {
             if (!data?.session) {
-                // No InsForge session — redirect to login
                 router.replace("/login");
             } else {
                 setChecking(false);
@@ -41,8 +40,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     return (
         <div className="flex h-screen bg-background-light dark:bg-background-dark overflow-hidden">
+            {/* Sidebar handles its own mobile/desktop rendering */}
             <Sidebar />
-            <main className="flex-1 overflow-y-auto">
+            {/* Main content area — on mobile the sidebar is overlaid, so we use full width */}
+            <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
                 {children}
             </main>
         </div>

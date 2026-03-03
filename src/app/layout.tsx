@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -7,6 +7,12 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "Smart AI Attendance",
   description: "Production-ready AI Attendance System with Sleep Detection",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -24,6 +30,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${inter.variable} font-display bg-background-dark text-slate-100 min-h-screen overflow-x-hidden`}
+        style={{ WebkitTapHighlightColor: 'transparent' }}
         suppressHydrationWarning
       >
         {children}
