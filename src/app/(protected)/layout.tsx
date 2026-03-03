@@ -39,11 +39,13 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     }
 
     return (
-        <div className="flex h-screen bg-background-light dark:bg-background-dark overflow-hidden">
-            {/* Sidebar handles its own mobile/desktop rendering */}
+        /*
+         * Mobile  (< lg): flex-col → mobile top-bar stacks ABOVE main content
+         * Desktop (≥ lg): flex-row → sidebar sits to the LEFT of main content
+         */
+        <div className="flex flex-col lg:flex-row h-screen bg-background-light dark:bg-background-dark overflow-hidden">
             <Sidebar />
-            {/* Main content area — on mobile the sidebar is overlaid, so we use full width */}
-            <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
+            <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
                 {children}
             </main>
         </div>

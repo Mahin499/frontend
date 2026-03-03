@@ -47,7 +47,7 @@ export default function Sidebar() {
     return (
         <>
             {/* ── Mobile Top Bar ── */}
-            <div className="lg:hidden flex items-center justify-between px-4 h-14 bg-[#111418] border-b border-white/8 z-30 sticky top-0">
+            <div className="lg:hidden w-full flex items-center justify-between px-4 h-14 bg-[#111418] border-b border-white/8 z-30 flex-shrink-0">
                 <div className="flex items-center gap-2">
                     <div className="bg-primary/20 p-1.5 rounded-lg">
                         <span className="material-symbols-outlined text-primary text-[18px]">face</span>

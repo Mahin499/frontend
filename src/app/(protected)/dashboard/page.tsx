@@ -18,7 +18,7 @@ import {
 
 export default function DashboardPage() {
     return (
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 w-full">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 w-full min-w-0">
             <div className="max-w-7xl mx-auto space-y-8">
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -84,7 +84,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Main Grid Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 min-w-0">
                     {/* Left Column: Chart */}
                     <div className="lg:col-span-2 flex flex-col gap-6">
                         <div className="bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark p-6 shadow-sm">
@@ -140,7 +140,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Recent Activity Table */}
-                        <div className="bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark overflow-hidden shadow-sm">
+                        <div className="bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark overflow-hidden shadow-sm min-w-0">
                             <div className="px-6 py-5 border-b border-border-light dark:border-border-dark flex justify-between items-center">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recent Entries</h3>
                                 <Link href="/reports/daily" className="text-primary text-sm font-medium hover:underline">View All</Link>
