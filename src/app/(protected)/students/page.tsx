@@ -5,12 +5,13 @@ import Link from "next/link";
 import Webcam from "react-webcam";
 import {
     Download, Plus, UserPlus, FolderArchive, ImagePlus,
-    UploadCloud, Edit, Camera, CheckCircle2, XCircle,
-    Loader2, RefreshCw, Search, Trash2
+    UploadCloud, Camera, CheckCircle2, XCircle, X,
+    Loader2, RefreshCw, Search, Trash2, Pencil
 } from "lucide-react";
 import {
     fetchClasses, fetchStudentsByClass, enrollStudent,
     uploadStudentPhoto, updateStudentEncoding,
+    updateStudent, deleteStudent,
     Class, Student
 } from "@/utils/insforge/client";
 
@@ -41,6 +42,17 @@ export default function StudentsManagementPage() {
     const [enrolling, setEnrolling] = useState(false);
     const [enrollMsg, setEnrollMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
+
+    // Edit student state
+    const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+    const [editName, setEditName] = useState("");
+    const [editReg, setEditReg] = useState("");
+    const [editSaving, setEditSaving] = useState(false);
+    const [editMsg, setEditMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    // Delete student state
+    const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
+    const [deletingStudent, setDeletingStudent] = useState(false);
 
     // Load classes on mount
     useEffect(() => {
@@ -437,19 +449,22 @@ export default function StudentsManagementPage() {
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        {(!student.face_encoding || (student.face_encoding as any[]).length === 0) && student.photo_url && (
-                                                            <button
-                                                                onClick={() => recomputeEncoding(student)}
-                                                                title="Compute face encoding"
-                                                                className="text-slate-400 hover:text-blue-400 transition-colors"
-                                                            >
-                                                                <RefreshCw size={14} />
-                                                            </button>
-                                                        )}
-                                                        <a href={student.photo_url || "#"} target="_blank" rel="noopener noreferrer"
-                                                            className={`text-slate-400 hover:text-white transition-colors ${!student.photo_url ? "opacity-30 pointer-events-none" : ""}`}>
-                                                            <Edit size={14} />
-                                                        </a>
+                                                        {/* Edit */}
+                                                        <button
+                                                            onClick={() => { setEditingStudent(student); setEditName(student.name); setEditReg(student.register_number); setEditMsg(null); }}
+                                                            title="Edit student"
+                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                                                        >
+                                                            <Pencil size={14} />
+                                                        </button>
+                                                        {/* Delete */}
+                                                        <button
+                                                            onClick={() => setDeletingStudentId(student.id)}
+                                                            title="Delete student"
+                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -462,5 +477,101 @@ export default function StudentsManagementPage() {
                 </div>
             </div>
         </div>
+
+        {/* ── Edit Student Modal ── */ }
+    {
+        editingStudent && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="bg-[#111418] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                    <div className="flex justify-between items-center mb-5">
+                        <h2 className="text-lg font-bold text-white">Edit Student</h2>
+                        <button onClick={() => setEditingStudent(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+                            <X size={18} />
+                        </button>
+                    </div>
+                    {editMsg && (
+                        <div className={`mb-4 p-3 rounded-xl flex items-center gap-2 text-sm font-medium ${editMsg!.type === "success" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
+                            {editMsg!.type === "success" ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                            {editMsg!.text}
+                        </div>
+                    )}
+                    <div className="space-y-4">
+                        <label className="block">
+                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Full Name</span>
+                            <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
+                                className="mt-1.5 w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm" />
+                        </label>
+                        <label className="block">
+                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Register Number</span>
+                            <input type="text" value={editReg} onChange={e => setEditReg(e.target.value)}
+                                className="mt-1.5 w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm" />
+                        </label>
+                        <div className="flex gap-3 pt-2">
+                            <button onClick={() => setEditingStudent(null)} className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 text-sm font-semibold transition-colors">
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (!editName.trim()) return;
+                                    setEditSaving(true); setEditMsg(null);
+                                    try {
+                                        await updateStudent(editingStudent!.id, { name: editName.trim(), register_number: editReg.trim() });
+                                        setStudents(prev => prev.map(s => s.id === editingStudent!.id ? { ...s, name: editName.trim(), register_number: editReg.trim() } : s));
+                                        setEditMsg({ type: "success", text: "✅ Student updated!" });
+                                        setTimeout(() => setEditingStudent(null), 800);
+                                    } catch (e: any) {
+                                        setEditMsg({ type: "error", text: e.message || "Failed to update." });
+                                    } finally { setEditSaving(false); }
+                                }}
+                                disabled={editSaving}
+                                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {editSaving ? <Loader2 size={14} className="animate-spin" /> : null}
+                                {editSaving ? "Saving..." : "Save Changes"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    {/* ── Delete Student Confirmation ── */ }
+    {
+        deletingStudentId && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="bg-[#111418] border border-red-500/30 rounded-2xl w-full max-w-sm p-6 shadow-2xl text-center">
+                    <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                        <Trash2 className="text-red-400" size={22} />
+                    </div>
+                    <h3 className="text-lg font-bold text-white mb-2">Delete Student?</h3>
+                    <p className="text-slate-400 text-sm mb-6">This will permanently delete the student record. Attendance records are not affected.</p>
+                    <div className="flex gap-3">
+                        <button onClick={() => setDeletingStudentId(null)} className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 text-sm font-semibold transition-colors">
+                            Cancel
+                        </button>
+                        <button
+                            onClick={async () => {
+                                setDeletingStudent(true);
+                                try {
+                                    await deleteStudent(deletingStudentId as string);
+                                    setStudents(prev => prev.filter(s => s.id !== deletingStudentId));
+                                    setDeletingStudentId(null);
+                                } catch (e: any) {
+                                    alert(e.message || "Failed to delete.");
+                                } finally { setDeletingStudent(false); }
+                            }}
+                            disabled={deletingStudent}
+                            className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {deletingStudent ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                            {deletingStudent ? "Deleting..." : "Delete"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+    </div >
     );
 }

@@ -106,6 +106,24 @@ export async function updateStudentEncoding(studentId: string, face_encoding: nu
     if (error) throw error;
 }
 
+export async function updateStudent(studentId: string, params: Partial<Pick<Student, 'name' | 'register_number' | 'class_id'>>): Promise<void> {
+    const client = getInsforgeClient();
+    const { error } = await (client as any).db
+        .from('students')
+        .update(params)
+        .eq('id', studentId);
+    if (error) throw error;
+}
+
+export async function deleteStudent(studentId: string): Promise<void> {
+    const client = getInsforgeClient();
+    const { error } = await (client as any).db
+        .from('students')
+        .delete()
+        .eq('id', studentId);
+    if (error) throw error;
+}
+
 export async function markAttendance(params: {
     student_id: string;
     class_id: string;
@@ -119,5 +137,34 @@ export async function markAttendance(params: {
     const { error } = await (client as any).db
         .from('attendance')
         .insert([{ ...params, status: 'present' }]);
+    if (error) throw error;
+}
+
+export async function createClass(params: { name: string; department: string; section?: string }): Promise<Class> {
+    const client = getInsforgeClient();
+    const { data, error } = await (client as any).db
+        .from('classes')
+        .insert([params])
+        .select()
+        .single();
+    if (error) throw error;
+    return data as Class;
+}
+
+export async function updateClass(classId: string, params: Partial<Pick<Class, 'name' | 'department' | 'section'>>): Promise<void> {
+    const client = getInsforgeClient();
+    const { error } = await (client as any).db
+        .from('classes')
+        .update(params)
+        .eq('id', classId);
+    if (error) throw error;
+}
+
+export async function deleteClass(classId: string): Promise<void> {
+    const client = getInsforgeClient();
+    const { error } = await (client as any).db
+        .from('classes')
+        .delete()
+        .eq('id', classId);
     if (error) throw error;
 }
