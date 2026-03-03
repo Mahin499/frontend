@@ -13,8 +13,12 @@ import {
     Class, Student
 } from "@/utils/insforge/client";
 
-const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://localhost:8000";
-const SCAN_INTERVAL_MS = 3000; // Scan every 3 seconds when recording
+// Insforge Edge Function powers the AI engine (Gemini Vision)
+const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL ||
+    (process.env.NEXT_PUBLIC_INSFORGE_BASE_URL
+        ? `${process.env.NEXT_PUBLIC_INSFORGE_BASE_URL}/functions/v1/ai-engine`
+        : "http://localhost:8000");
+const SCAN_INTERVAL_MS = 4000; // 4s intervals (Gemini needs more time)
 
 interface RecognitionResult {
     student_id?: string;
@@ -103,13 +107,13 @@ export default function LiveSessionPage() {
     const doScan = useCallback(async () => {
         if (!webcamRef.current || !isCameraReady || isScanning) return;
 
-        // Build known_faces from students with face encodings
+        // Build known_faces from students with photo_url (Gemini uses photos, not encodings)
         const knownFaces = students
-            .filter(s => s.face_encoding && (s.face_encoding as any[]).length > 0)
+            .filter(s => s.photo_url)
             .map(s => ({
                 student_id: s.id,
                 register_number: s.register_number,
-                encoding: s.face_encoding,
+                photo_url: s.photo_url,
             }));
 
         if (knownFaces.length === 0) return; // Nothing to match against
@@ -129,7 +133,7 @@ export default function LiveSessionPage() {
                     known_faces: knownFaces,
                     confidence_threshold: 60,
                 }),
-                signal: AbortSignal.timeout(5000),
+                signal: AbortSignal.timeout(25000), // Gemini needs up to 20s
             });
 
             if (!res.ok) return;

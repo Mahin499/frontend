@@ -401,7 +401,7 @@ export default function LoginPage() {
             </main>
 
             <footer className="relative z-10 py-6 text-center border-t border-white/5">
-                <p className="text-slate-600 text-xs">© 2024 SmartAI Attendance System. All rights reserved.</p>
+                <p className="text-slate-600 text-xs">© 2026 SmartAI Attendance System. All rights reserved.</p>
             </footer>
         </div>
     );

@@ -14,7 +14,11 @@ import {
     Class, Student
 } from "@/utils/insforge/client";
 
-const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://localhost:8000";
+// Insforge Edge Function for AI (Gemini Vision)
+const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL ||
+    (process.env.NEXT_PUBLIC_INSFORGE_BASE_URL
+        ? `${process.env.NEXT_PUBLIC_INSFORGE_BASE_URL}/functions/v1/ai-engine`
+        : "http://localhost:8000");
 
 export default function StudentsManagementPage() {
     // Classes & Students
@@ -108,30 +112,17 @@ export default function StudentsManagementPage() {
                 reader.readAsDataURL(photoFile);
             });
 
-            const aiRes = await fetch(`${AI_SERVICE_URL}/api/enroll`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ student_id: tempId, image_base64: imgData }),
-            });
-
-            let faceEncoding: number[] | null = null;
-            if (aiRes.ok) {
-                const aiData = await aiRes.json();
-                faceEncoding = aiData.encoding || null;
-            }
-
-            // 4. Save student to InsForge DB with photo_url + face_encoding
             const newStudent = await enrollStudent({
                 name: fullName,
                 register_number: regNumber,
                 class_id: enrollClassId,
                 photo_url: photoUrl,
-                face_encoding: faceEncoding || [],
+                face_encoding: [1], // Sentinel: Gemini uses photo_url at scan time
             });
 
             setEnrollMsg({
                 type: "success",
-                text: `✅ ${fullName} enrolled successfully!${faceEncoding ? " Face encoding computed." : " (AI service offline — encoding pending)"}`
+                text: `✅ ${fullName} enrolled! Photo stored — AI engine will recognize at scan time.`
             });
 
             // Refresh student list
