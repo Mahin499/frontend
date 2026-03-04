@@ -151,7 +151,7 @@ export default function MeetingsPage() {
                 marked_at: new Date().toISOString(),
             }));
             for (const rec of records) {
-                await (client as any).db.from("meeting_attendance")
+                await (client as any).database.from("meeting_attendance")
                     .upsert([rec], { onConflict: "meeting_id,faculty_name" });
             }
             // Update local state
@@ -217,12 +217,12 @@ export default function MeetingsPage() {
         };
         try {
             if (modalMode === "create") {
-                const { data, error } = await (client as any).db.from("meetings").insert([payload]).select().single();
+                const { data, error } = await (client as any).database.from("meetings").insert([payload]).select().single();
                 if (error) throw error;
                 setMeetings(prev => [data, ...prev]);
                 setMsg({ type: "success", text: "✅ Meeting created!" });
             } else if (editing) {
-                const { error } = await (client as any).db.from("meetings").update(payload).eq("id", editing.id);
+                const { error } = await (client as any).database.from("meetings").update(payload).eq("id", editing.id);
                 if (error) throw error;
                 setMeetings(prev => prev.map(m => m.id === editing.id ? { ...m, ...payload } : m));
                 setMsg({ type: "success", text: "✅ Meeting updated!" });
@@ -236,7 +236,7 @@ export default function MeetingsPage() {
     const handleDelete = async (id: string) => {
         setDeleting(true);
         try {
-            await (client as any).db.from("meetings").delete().eq("id", id);
+            await (client as any).database.from("meetings").delete().eq("id", id);
             setMeetings(prev => prev.filter(m => m.id !== id));
             setDeletingId(null);
         } catch (e: any) { alert(e.message); } finally { setDeleting(false); }

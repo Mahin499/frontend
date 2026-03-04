@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { getInsforgeClient } from "./client";
 
@@ -7,13 +9,13 @@ export function useStudentCount() {
     useEffect(() => {
         const client = getInsforgeClient();
         // Initial fetch
-        (client as any).db.from("students").select("id", { count: "exact", head: true })
+        (client as any).database.from("students").select("id", { count: "exact", head: true })
             .then(({ count: c }: any) => setCount(c ?? 0));
         // Real-time subscription
         const sub = (client as any).realtime
             ?.channel("students-count")
             ?.on("postgres_changes", { event: "*", schema: "public", table: "students" }, () => {
-                (client as any).db.from("students").select("id", { count: "exact", head: true })
+                (client as any).database.from("students").select("id", { count: "exact", head: true })
                     .then(({ count: c }: any) => setCount(c ?? 0));
             })
             ?.subscribe();
@@ -27,13 +29,13 @@ export function useFacultyCount() {
     const [count, setCount] = useState<number | null>(null);
     useEffect(() => {
         const client = getInsforgeClient();
-        (client as any).db.from("faculty_approvals").select("id", { count: "exact", head: true })
+        (client as any).database.from("faculty_approvals").select("id", { count: "exact", head: true })
             .eq("status", "approved")
             .then(({ count: c }: any) => setCount(c ?? 0));
         const sub = (client as any).realtime
             ?.channel("faculty-count")
             ?.on("postgres_changes", { event: "*", schema: "public", table: "faculty_approvals" }, () => {
-                (client as any).db.from("faculty_approvals").select("id", { count: "exact", head: true })
+                (client as any).database.from("faculty_approvals").select("id", { count: "exact", head: true })
                     .eq("status", "approved")
                     .then(({ count: c }: any) => setCount(c ?? 0));
             })
@@ -49,7 +51,7 @@ export function usePendingApprovals() {
     useEffect(() => {
         const client = getInsforgeClient();
         const fetch = () =>
-            (client as any).db.from("faculty_approvals").select("id", { count: "exact", head: true })
+            (client as any).database.from("faculty_approvals").select("id", { count: "exact", head: true })
                 .eq("status", "pending")
                 .then(({ count: c }: any) => setCount(c ?? 0));
         fetch();
@@ -76,7 +78,7 @@ export async function writeAIValidation(
     if (reason) payload.rejection_reason = reason;
     // Write to ai_validations table if it exists, silently ignore if not
     try {
-        await (client as any).db.from("ai_validations").upsert([{ id: validationId, ...payload }]);
+        await (client as any).database.from("ai_validations").upsert([{ id: validationId, ...payload }]);
     } catch (_) { /* table may not exist, treat as no-op */ }
 }
 
@@ -84,7 +86,7 @@ export async function writeAIValidation(
 export async function saveInstituteSettings(settings: Record<string, any>) {
     const client = getInsforgeClient();
     try {
-        const { error } = await (client as any).db.from("institute_settings").upsert([{ id: "main", ...settings, updated_at: new Date().toISOString() }]);
+        const { error } = await (client as any).database.from("institute_settings").upsert([{ id: "main", ...settings, updated_at: new Date().toISOString() }]);
         if (error) throw error;
     } catch (_) { /* table may not exist yet */ }
 }
@@ -92,7 +94,7 @@ export async function saveInstituteSettings(settings: Record<string, any>) {
 export async function loadInstituteSettings(): Promise<Record<string, any> | null> {
     const client = getInsforgeClient();
     try {
-        const { data } = await (client as any).db.from("institute_settings").select("*").eq("id", "main").single();
+        const { data } = await (client as any).database.from("institute_settings").select("*").eq("id", "main").single();
         return data || null;
     } catch (_) { return null; }
 }
@@ -101,7 +103,7 @@ export async function loadInstituteSettings(): Promise<Record<string, any> | nul
 export async function markMeetingAttendance(meetingId: string, facultyId: string, status: "present" | "absent" | "late") {
     const client = getInsforgeClient();
     try {
-        await (client as any).db.from("meeting_attendance").upsert([{
+        await (client as any).database.from("meeting_attendance").upsert([{
             meeting_id: meetingId, faculty_id: facultyId, status, marked_at: new Date().toISOString()
         }]);
     } catch (_) { /* silent */ }
@@ -110,7 +112,7 @@ export async function markMeetingAttendance(meetingId: string, facultyId: string
 export async function getMeetingAttendance(meetingId: string) {
     const client = getInsforgeClient();
     try {
-        const { data } = await (client as any).db.from("meeting_attendance").select("*").eq("meeting_id", meetingId);
+        const { data } = await (client as any).database.from("meeting_attendance").select("*").eq("meeting_id", meetingId);
         return data || [];
     } catch (_) { return []; }
 }

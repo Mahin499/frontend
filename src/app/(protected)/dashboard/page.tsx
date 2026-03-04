@@ -17,11 +17,15 @@ import {
     Loader2
 } from "lucide-react";
 import { useStudentCount, useFacultyCount, usePendingApprovals } from "@/utils/insforge/realtime";
+import { useState } from "react";
 
 export default function DashboardPage() {
     const studentCount = useStudentCount();
     const facultyCount = useFacultyCount();
     const pendingApprovals = usePendingApprovals();
+
+    // Modal State for Event Details
+    const [showEventModal, setShowEventModal] = useState(false);
 
     return (
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 w-full min-w-0">
@@ -211,7 +215,7 @@ export default function DashboardPage() {
                         <div className="bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark p-6 shadow-sm">
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Quick Actions</h3>
                             <div className="space-y-3">
-                                <Link href="/faculty" className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
+                                <Link href="/faculty/pending" className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-primary">
                                             <UserPlus size={18} />
@@ -287,13 +291,54 @@ export default function DashboardPage() {
                                 <div className="h-8 w-8 rounded-full ring-2 ring-blue-600 bg-slate-300 flex items-center justify-center text-slate-600 text-xs font-bold">AS</div>
                                 <div className="h-8 w-8 rounded-full ring-2 ring-blue-600 bg-white/20 flex items-center justify-center text-xs font-medium text-white">+5</div>
                             </div>
-                            <Link href="/meetings" className="block w-full py-2 bg-white text-primary font-semibold rounded-lg text-sm hover:bg-blue-50 transition-colors text-center">
+                            <button onClick={() => setShowEventModal(true)} className="block w-full py-2 bg-white text-primary font-semibold rounded-lg text-sm hover:bg-blue-50 transition-colors text-center">
                                 View Details
-                            </Link>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Event Details Modal */}
+            {showEventModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-900 dark:text-white">Faculty Meeting</h2>
+                                <p className="text-sm text-slate-500 mt-1">Today, 2:00 PM - 3:30 PM</p>
+                            </div>
+                            <button onClick={() => setShowEventModal(false)} className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Participants</p>
+                                <div className="flex gap-2">
+                                    <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">JD</div>
+                                    <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">AS</div>
+                                    <div className="h-8 w-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold">+5</div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Agenda</p>
+                                <ul className="list-disc list-inside text-sm text-slate-600 dark:text-slate-300 space-y-1">
+                                    <li>Term 2 Syllabus Review</li>
+                                    <li>AI Attendance System Feedback</li>
+                                    <li>Upcoming Student Assessments</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <button onClick={() => setShowEventModal(false)} className="mt-6 w-full py-2.5 bg-primary text-white font-semibold rounded-xl text-sm hover:bg-primary/90 transition-colors">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

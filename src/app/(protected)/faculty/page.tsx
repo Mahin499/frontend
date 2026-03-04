@@ -34,7 +34,7 @@ export default function FacultyDashboardPage() {
     const client = getInsforgeClient();
 
     useEffect(() => {
-        (client as any).db.from("faculty_approvals").select("*").order("submitted_at", { ascending: false })
+        (client as any).database.from("faculty_approvals").select("*").order("submitted_at", { ascending: false })
             .then(({ data, error }: any) => { if (!error) setApprovals(data || []); })
             .finally(() => setLoadingApp(false));
     }, []);
@@ -42,7 +42,7 @@ export default function FacultyDashboardPage() {
     const updateStatus = async (id: string, status: "approved" | "rejected" | "pending") => {
         setUpdatingId(id);
         try {
-            await (client as any).db.from("faculty_approvals").update({ status, reviewed_at: new Date().toISOString() }).eq("id", id);
+            await (client as any).database.from("faculty_approvals").update({ status, reviewed_at: new Date().toISOString() }).eq("id", id);
             setApprovals(prev => prev.map(a => a.id === id ? { ...a, status } : a));
         } finally { setUpdatingId(null); }
     };

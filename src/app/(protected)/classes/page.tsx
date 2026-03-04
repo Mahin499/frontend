@@ -24,6 +24,7 @@ export default function ClassesManagementPage() {
     const [formName, setFormName] = useState("");
     const [formDept, setFormDept] = useState(DEPARTMENTS[0]);
     const [formSection, setFormSection] = useState("");
+    const [formFaculty, setFormFaculty] = useState("");
     const [saving, setSaving] = useState(false);
     const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -44,13 +45,13 @@ export default function ClassesManagementPage() {
     };
 
     const openCreate = () => {
-        setFormName(""); setFormDept(DEPARTMENTS[0]); setFormSection(""); setMsg(null);
+        setFormName(""); setFormDept(DEPARTMENTS[0]); setFormSection(""); setFormFaculty(""); setMsg(null);
         setEditingClass(null);
         setModalMode("create");
     };
 
     const openEdit = (cls: Class) => {
-        setFormName(cls.name); setFormDept(cls.department); setFormSection(cls.section || ""); setMsg(null);
+        setFormName(cls.name); setFormDept(cls.department); setFormSection(cls.section || ""); setFormFaculty(""); setMsg(null);
         setEditingClass(cls);
         setModalMode("edit");
     };
@@ -62,21 +63,43 @@ export default function ClassesManagementPage() {
             setMsg({ type: "error", text: "Class name and department are required." });
             return;
         }
+
+        console.log("Button clicked: Save Class");
         setSaving(true);
         setMsg(null);
         try {
             if (modalMode === "create") {
-                const created = await createClass({ name: formName.trim(), department: formDept, section: formSection.trim() || undefined });
-                setClasses(prev => [...prev, created]);
+                const payload = {
+                    className: formName.trim(),
+                    department: formDept,
+                    semester: formSection.trim() || undefined,
+                    facultyId: formFaculty.trim() || undefined
+                };
+
+                console.log("API request sent: POST /api/classes", payload);
+                const res = await fetch("/api/classes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                console.log("API response received: /api/classes", data);
+
+                if (!res.ok) throw new Error(data.error || "Failed to create class via API");
+
+                // Assuming data returns the new class or we just refresh via loadClasses
                 setMsg({ type: "success", text: `✅ Class "${formName}" created!` });
+                loadClasses();
             } else if (modalMode === "edit" && editingClass) {
+                // Keep the old insforge updates for editing if required, since PRD only stated create
                 await updateClass(editingClass.id, { name: formName.trim(), department: formDept, section: formSection.trim() || undefined });
                 setClasses(prev => prev.map(c => c.id === editingClass.id ? { ...c, name: formName.trim(), department: formDept, section: formSection.trim() || null } : c));
                 setMsg({ type: "success", text: `✅ Class updated!` });
             }
-            setTimeout(closeModal, 1000);
+            setTimeout(closeModal, 1500);
         } catch (e: any) {
-            setMsg({ type: "error", text: e.message || "Failed to save. Try again." });
+            setMsg({ type: "error", text: e.message || "Network Error: Failed to save. Try again." });
         } finally {
             setSaving(false);
         }
@@ -245,6 +268,13 @@ export default function ClassesManagementPage() {
                                     </select>
                                 </label>
                             </div>
+
+                            <label className="block">
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Assign Faculty</span>
+                                <input type="text" value={formFaculty} onChange={e => setFormFaculty(e.target.value)}
+                                    placeholder="e.g. Prof. Rajan Kumar"
+                                    className="mt-1.5 w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" />
+                            </label>
 
                             <div className="flex gap-3 pt-2">
                                 <button onClick={closeModal} className="flex-1 py-3 border border-border-dark text-slate-400 hover:text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition-colors">

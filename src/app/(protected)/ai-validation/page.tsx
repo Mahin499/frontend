@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
     Filter, CheckCircle2, User, AlertTriangle, Sparkles, Brain,
-    Clock, HelpCircle, X, Search, Download, CheckCheck, Eye, EyeOff
+    Clock, HelpCircle, X, Search, Download, CheckCheck, Eye, EyeOff, Loader2
 } from "lucide-react";
 import { writeAIValidation } from "@/utils/insforge/realtime";
 
@@ -61,37 +61,72 @@ export default function AIValidationPage() {
     const [filterTag, setFilterTag] = useState("All");
     const [showFilter, setShowFilter] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
+    const [loadingAction, setLoadingAction] = useState<number | 'all' | null>(null);
     const [hideProcessed, setHideProcessed] = useState(false);
+    const [investigateItem, setInvestigateItem] = useState<ValidationItem | null>(null);
     const [page, setPage] = useState(1);
     const PER_PAGE = 5;
 
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
-    const update = (id: number, status: Status) => {
-        setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
-        // Persist to DB (fire-and-forget)
-        const item = INITIAL_ITEMS.find(i => i.id === id);
-        if (item && status !== "pending") {
-            writeAIValidation(String(id), status as any).catch(() => { });
+    const update = async (id: number, status: Status) => {
+        setLoadingAction(id);
+        console.log(`Button clicked: Update status to ${status} for ID ${id}`);
+        try {
+            if (status === "confirmed") {
+                console.log("API request sent: POST /api/ai/approve", { studentId: id, scanId: id });
+                const res = await fetch("/api/ai/approve", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ studentId: id, scanId: id })
+                });
+                const data = await res.json();
+                console.log("API response received: /api/ai/approve", data);
+                if (!res.ok) throw new Error(data.error || "Failed to approve");
+            }
+            // For reject/investigating, we'll just update local state or simulate API
+            setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+        } catch (e: any) {
+            console.error(e);
+            showToast(`Error: ${e.message}`);
+        } finally {
+            setLoadingAction(null);
         }
     };
 
-    const approveAllHigh = () => {
-        let count = 0;
-        const ids: number[] = [];
-        setItems(prev => prev.map(i => {
-            if (i.confidence >= 85 && i.status === "pending") {
-                count++;
-                ids.push(i.id);
-                return { ...i, status: "confirmed" };
-            }
-            return i;
-        }));
-        ids.forEach(id => writeAIValidation(String(id), "confirmed").catch(() => { }));
-        showToast(`✅ Approved ${count} high-confidence item(s)`);
+    const approveAllHigh = async () => {
+        setLoadingAction('all');
+        console.log("Button clicked: Approve All High Confidence");
+        try {
+            console.log("API request sent: POST /api/ai/approve-high-confidence", { threshold: 85 });
+            const res = await fetch("/api/ai/approve-high-confidence", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ threshold: 85 })
+            });
+            const data = await res.json();
+            console.log("API response received: /api/ai/approve-high-confidence", data);
+
+            if (!res.ok) throw new Error(data.error || "Failed bulk approval");
+
+            let count = 0;
+            setItems(prev => prev.map(i => {
+                if (i.confidence >= 85 && i.status === "pending") {
+                    count++;
+                    return { ...i, status: "confirmed" };
+                }
+                return i;
+            }));
+            showToast(`✅ Approved ${count} high-confidence item(s)`);
+        } catch (e: any) {
+            console.error(e);
+            showToast(`Error: ${e.message}`);
+        } finally {
+            setLoadingAction(null);
+        }
     };
 
-    const ALL_TAGS = ["All", "Attentive", "Drowsy Detected", "Anomaly Detected", "Distracted", "Verified Match"];
+    const ALL_TAGS = ["All", "Attentive", "Drowsy Detected", "Anomaly Detected", "Distracted", "Verified Match", "Low Confidence", "Critical Low"];
 
     const filtered = useMemo(() => items.filter(i => {
         if (hideProcessed && i.status !== "pending") return false;
@@ -101,6 +136,18 @@ export default function AIValidationPage() {
     }), [items, search, filterTag, hideProcessed]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+
+    // PRD: Call GET /api/ai/detections?filter=value when applying a filter
+    const handleFilterClick = (t: string) => {
+        setFilterTag(t);
+        setPage(1);
+        console.log(`API request sent: GET /api/ai/detections?filter=${t}`);
+        fetch(`/api/ai/detections?filter=${encodeURIComponent(t)}`)
+            .then(r => r.json())
+            .then(data => console.log("API response received: /api/ai/detections", data))
+            .catch(e => console.error("Filter API error", e));
+    };
+
     const pageItems = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
     const pending = items.filter(i => i.status === "pending").length;
 
@@ -136,9 +183,10 @@ export default function AIValidationPage() {
                             className={`flex items-center gap-2 h-10 px-4 rounded-lg border transition-colors text-sm font-medium ${hideProcessed ? "bg-slate-800 text-white border-slate-600" : "bg-surface-light dark:bg-slate-800 text-slate-700 dark:text-white border-border-light dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
                             {hideProcessed ? <Eye size={16} /> : <EyeOff size={16} />} {hideProcessed ? "Show All" : "Pending Only"}
                         </button>
-                        <button onClick={approveAllHigh}
-                            className="flex items-center gap-2 h-10 px-4 rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors text-sm font-bold shadow-sm">
-                            <CheckCheck size={16} /> Approve All High Confidence
+                        <button onClick={approveAllHigh} disabled={loadingAction === 'all'}
+                            className="flex items-center gap-2 h-10 px-4 rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors text-sm font-bold shadow-sm disabled:opacity-50">
+                            {loadingAction === 'all' ? <Loader2 size={16} className="animate-spin" /> : <CheckCheck size={16} />}
+                            {loadingAction === 'all' ? "Processing..." : "Approve All High Confidence"}
                         </button>
                     </div>
                 </div>
@@ -158,7 +206,7 @@ export default function AIValidationPage() {
                             <label className="label-xs block mb-1.5">Filter by Tag</label>
                             <div className="flex flex-wrap gap-1.5">
                                 {ALL_TAGS.map(t => (
-                                    <button key={t} onClick={() => { setFilterTag(t); setPage(1); }}
+                                    <button key={t} onClick={() => handleFilterClick(t)}
                                         className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all capitalize ${filterTag === t ? "bg-primary text-white border-primary" : "border-border-dark text-slate-400 hover:text-white hover:border-slate-500"}`}>
                                         {t}
                                     </button>
@@ -207,9 +255,9 @@ export default function AIValidationPage() {
                             <tbody className="divide-y divide-border-light dark:divide-slate-700/50">
                                 {pageItems.length === 0 ? (
                                     <tr><td colSpan={4} className="py-16 text-center text-slate-400 text-sm">No items match your filter</td></tr>
-                                ) : pageItems.map(item => {
+                                ) : pageItems.map((item: ValidationItem) => {
                                     const cc = confidenceColor(item.confidence);
-                                    const ss = statusStyle[item.status];
+                                    const ss = statusStyle[item.status as Status];
                                     return (
                                         <tr key={item.id} className={`group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${ss.bg}`}>
                                             <td className="py-4 px-5 align-top">
@@ -245,19 +293,19 @@ export default function AIValidationPage() {
                                             <td className="py-4 px-5 align-top text-right">
                                                 {item.status === "pending" ? (
                                                     <div className="flex justify-end gap-1.5 flex-wrap">
-                                                        <button title="Reject" onClick={() => { update(item.id, "rejected"); showToast(`❌ Rejected: ${item.name}`); }}
-                                                            className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                                                        <button disabled={loadingAction === item.id} title="Reject" onClick={() => { update(item.id, "rejected"); showToast(`❌ Rejected: ${item.name}`); }}
+                                                            className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50">
                                                             <X size={16} />
                                                         </button>
                                                         {item.confidence < 75 && (
-                                                            <button onClick={() => { update(item.id, "investigating"); showToast(`🔍 Flagged for investigation: ${item.name}`); }}
-                                                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-500/10 hover:bg-amber-200 text-amber-700 dark:text-amber-400 text-xs font-bold transition-colors">
+                                                            <button disabled={loadingAction === item.id} onClick={() => { setInvestigateItem(item); }}
+                                                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-500/10 hover:bg-amber-200 text-amber-700 dark:text-amber-400 text-xs font-bold transition-colors disabled:opacity-50">
                                                                 <HelpCircle size={13} /> Investigate
                                                             </button>
                                                         )}
-                                                        <button onClick={() => { update(item.id, "confirmed"); showToast(`✅ Confirmed: ${item.name}`); }}
-                                                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-colors shadow-sm">
-                                                            <CheckCircle2 size={13} /> Confirm
+                                                        <button disabled={loadingAction === item.id} onClick={() => { update(item.id, "confirmed"); showToast(`✅ Confirmed: ${item.name}`); }}
+                                                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-colors shadow-sm disabled:opacity-50">
+                                                            {loadingAction === item.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Confirm
                                                         </button>
                                                     </div>
                                                 ) : (
@@ -291,12 +339,95 @@ export default function AIValidationPage() {
                     </div>
                 </div>
 
-                <div className="flex justify-center">
+                <div className="flex justify-center mt-6">
                     <p className="text-slate-500 dark:text-slate-400 text-xs flex items-center gap-1.5 font-medium">
                         <Sparkles size={14} className="text-primary" /> Authenticated by Gemini AI · Data Encrypted AES-256
                     </p>
                 </div>
             </div>
+
+            {/* Investigate Modal */}
+            {investigateItem && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl w-full max-w-3xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                    <HelpCircle className="text-amber-500" size={24} />
+                                    Investigate Anomaly
+                                </h2>
+                                <p className="text-sm text-slate-500 mt-1">Reviewing {investigateItem.name} ({investigateItem.class})</p>
+                            </div>
+                            <button onClick={() => setInvestigateItem(null)} className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            {/* Images Panel */}
+                            <div className="space-y-4">
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Source Scan</h3>
+                                    <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                                        <div className="absolute inset-x-0 inset-y-0 border-2 border-red-500/50 m-8 rounded-lg pointer-events-none"></div>
+                                        <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">CAM_GATE_3</div>
+                                        <User size={48} className="text-slate-300 dark:text-slate-600" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Database Record</h3>
+                                    <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                                        <User size={48} className="text-slate-300 dark:text-slate-600" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Details Panel */}
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Confidence Score</h3>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-4xl font-black text-slate-900 dark:text-white">{investigateItem.confidence}%</span>
+                                        {investigateItem.confidence < 75 && (
+                                            <span className="bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 text-xs font-bold px-2 py-1 rounded">Below Threshold</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Gemini AI Analysis</h3>
+                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-sm text-slate-600 dark:text-slate-300 leading-relaxed border border-slate-200 dark:border-slate-700">
+                                        {investigateItem.analysis}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Engagement Indicators</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {investigateItem.tags.map((t: string) => (
+                                            <span key={t} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-bold ${tagColors[t] || tagColors["Distracted"]}`}>
+                                                {t}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
+                            <button onClick={() => setInvestigateItem(null)} className="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                Cancel
+                            </button>
+                            <button onClick={() => { update(investigateItem.id, "rejected"); setInvestigateItem(null); showToast(`❌ Rejected: ${investigateItem.name}`); }} className="px-5 py-2.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 font-semibold rounded-xl text-sm transition-colors">
+                                Reject Manually
+                            </button>
+                            <button onClick={() => { update(investigateItem.id, "confirmed"); setInvestigateItem(null); showToast(`✅ Confirmed manually: ${investigateItem.name}`); }} className="px-5 py-2.5 bg-primary text-white font-semibold rounded-xl text-sm hover:bg-primary/90 transition-colors shadow-sm">
+                                Override & Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
