@@ -156,7 +156,7 @@ export default function DashboardPage() {
                         <div className="bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark overflow-hidden shadow-sm min-w-0">
                             <div className="px-6 py-5 border-b border-border-light dark:border-border-dark flex justify-between items-center">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recent Entries</h3>
-                                <Link href="/reports/daily" className="text-primary text-sm font-medium hover:underline">View All</Link>
+                                <Link href="/reports/whole-day" className="text-primary text-sm font-medium hover:underline">View All</Link>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
@@ -253,7 +253,7 @@ export default function DashboardPage() {
                                     <div>
                                         <p className="text-sm font-medium text-slate-900 dark:text-white">Unexpected Absence Spike</p>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Grade 11-B shows 45% absence today.</p>
-                                        <Link href="/reports/daily" className="text-xs font-semibold text-primary mt-2 hover:underline inline-block">Investigate</Link>
+                                        <Link href="/reports/whole-day" className="text-xs font-semibold text-primary mt-2 hover:underline inline-block">Investigate</Link>
                                     </div>
                                 </div>
                                 <div className="flex gap-3 items-start pb-4 border-b border-border-light dark:border-border-dark last:border-0 last:pb-0">

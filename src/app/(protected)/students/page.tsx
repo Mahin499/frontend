@@ -190,388 +190,389 @@ export default function StudentsManagementPage() {
     const selectedClass = classes.find(c => c.id === selectedClassId);
 
     return (
-        <div className="flex-1 overflow-y-auto px-4 md:px-10 py-6 w-full bg-[#0d1117]">
-            <div className="max-w-[1440px] mx-auto space-y-8">
+        <>
+            <div className="flex-1 overflow-y-auto px-4 md:px-10 py-6 w-full bg-[#0d1117]">
+                <div className="max-w-[1440px] mx-auto space-y-8">
 
-                {/* Header */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex flex-wrap gap-2 text-sm text-slate-500">
-                        <Link href="/dashboard" className="hover:text-blue-400 transition-colors">Dashboard</Link>
-                        <span>/</span>
-                        <span className="text-white font-medium">Student Enrollment</span>
-                    </div>
-                    <div className="flex justify-between items-end flex-wrap gap-4">
-                        <div>
-                            <h1 className="text-3xl font-black text-white">Student Management</h1>
-                            <p className="text-slate-400 mt-1">Enroll students with face photos — stored in InsForge and used for live AI recognition.</p>
+                    {/* Header */}
+                    <div className="flex flex-col gap-2">
+                        <div className="flex flex-wrap gap-2 text-sm text-slate-500">
+                            <Link href="/dashboard" className="hover:text-blue-400 transition-colors">Dashboard</Link>
+                            <span>/</span>
+                            <span className="text-white font-medium">Student Enrollment</span>
+                        </div>
+                        <div className="flex justify-between items-end flex-wrap gap-4">
+                            <div>
+                                <h1 className="text-3xl font-black text-white">Student Management</h1>
+                                <p className="text-slate-400 mt-1">Enroll students with face photos — stored in InsForge and used for live AI recognition.</p>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-                    {/* LEFT: Enrollment Form */}
-                    <div className="lg:col-span-5">
-                        <div className="bg-[#111418] border border-white/8 rounded-2xl p-6">
-                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/8">
-                                <div className="bg-blue-500/10 p-2 rounded-lg text-blue-400">
-                                    <UserPlus size={24} />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-white">Enroll Student</h3>
-                                    <p className="text-xs text-slate-400">Upload photo → stored in class folder → face encoded for AI</p>
-                                </div>
-                            </div>
-
-                            {enrollMsg && (
-                                <div className={`mb-5 p-3 rounded-xl flex items-start gap-2 text-sm font-medium ${enrollMsg.type === "success" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
-                                    {enrollMsg.type === "success" ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <XCircle size={16} className="mt-0.5 shrink-0" />}
-                                    {enrollMsg.text}
-                                </div>
-                            )}
-
-                            <form className="flex flex-col gap-4" onSubmit={handleEnroll}>
-                                {/* Name */}
-                                <label className="flex flex-col gap-1.5">
-                                    <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Full Name</span>
-                                    <input
-                                        value={fullName} onChange={e => setFullName(e.target.value)}
-                                        className="w-full rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 text-sm py-2.5 px-3 outline-none transition-all"
-                                        placeholder="e.g. John Doe" type="text" required
-                                    />
-                                </label>
-
-                                {/* Reg Number + Class */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    <label className="flex flex-col gap-1.5">
-                                        <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Reg Number</span>
-                                        <input
-                                            value={regNumber} onChange={e => setRegNumber(e.target.value)}
-                                            className="w-full rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 text-sm py-2.5 px-3 outline-none transition-all"
-                                            placeholder="CS-2024-001" type="text" required
-                                        />
-                                    </label>
-                                    <label className="flex flex-col gap-1.5">
-                                        <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Class</span>
-                                        <select
-                                            value={enrollClassId} onChange={e => setEnrollClassId(e.target.value)}
-                                            className="w-full rounded-xl border border-white/10 bg-[#1a1f2e] text-white focus:border-blue-500/50 text-sm py-2.5 px-3 outline-none"
-                                        >
-                                            {classes.map(c => (
-                                                <option key={c.id} value={c.id}>{c.name}</option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                </div>
-
-                                {/* Photo Upload Area */}
-                                <div className="flex flex-col gap-2">
-                                    <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Student Photo</span>
-
-                                    {/* Toggle: upload vs webcam */}
-                                    <div className="flex gap-2 mb-1">
-                                        <button type="button" onClick={() => setUseCamera(false)}
-                                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${!useCamera ? "bg-blue-600 border-blue-600 text-white" : "border-white/10 text-slate-400 hover:text-white"}`}>
-                                            <UploadCloud className="inline w-3 h-3 mr-1" /> Upload
-                                        </button>
-                                        <button type="button" onClick={() => setUseCamera(true)}
-                                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${useCamera ? "bg-blue-600 border-blue-600 text-white" : "border-white/10 text-slate-400 hover:text-white"}`}>
-                                            <Camera className="inline w-3 h-3 mr-1" /> Webcam
-                                        </button>
+                        {/* LEFT: Enrollment Form */}
+                        <div className="lg:col-span-5">
+                            <div className="bg-[#111418] border border-white/8 rounded-2xl p-6">
+                                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/8">
+                                    <div className="bg-blue-500/10 p-2 rounded-lg text-blue-400">
+                                        <UserPlus size={24} />
                                     </div>
-
-                                    {useCamera ? (
-                                        <div className="rounded-xl overflow-hidden border border-white/10 relative">
-                                            <Webcam
-                                                ref={webcamRef}
-                                                audio={false}
-                                                screenshotFormat="image/jpeg"
-                                                className="w-full aspect-video object-cover"
-                                                onUserMedia={() => setIsCameraReady(true)}
-                                                mirrored
-                                            />
-                                            {isCameraReady && (
-                                                <button
-                                                    type="button"
-                                                    onClick={captureFromCamera}
-                                                    className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg"
-                                                >
-                                                    <Camera size={14} /> Capture Photo
-                                                </button>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <label className="relative group border-2 border-dashed border-white/10 hover:border-blue-500/50 rounded-xl bg-white/3 p-6 transition-all cursor-pointer flex flex-col items-center justify-center gap-3">
-                                            {photoPreview ? (
-                                                <div className="relative w-full">
-                                                    <img src={photoPreview} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
-                                                    <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-1">
-                                                        <CheckCircle2 size={14} />
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div className="bg-blue-500/10 p-3 rounded-full group-hover:scale-110 transition-transform">
-                                                        <ImagePlus className="text-blue-400" size={24} />
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="text-sm font-medium text-white">Click or drag photo here</p>
-                                                        <p className="text-xs text-slate-500 mt-1">Supports JPG, PNG (Max 5MB)</p>
-                                                    </div>
-                                                </>
-                                            )}
-                                            <input type="file" accept="image/*" className="hidden" onChange={handlePhotoFileChange} />
-                                        </label>
-                                    )}
-
-                                    {photoPreview && !useCamera && (
-                                        <button type="button" onClick={() => { setPhotoPreview(null); setPhotoFile(null); }}
-                                            className="text-xs text-red-400 hover:text-red-300 transition-colors self-end">
-                                            Remove photo
-                                        </button>
-                                    )}
+                                    <div>
+                                        <h3 className="text-lg font-bold text-white">Enroll Student</h3>
+                                        <p className="text-xs text-slate-400">Upload photo → stored in class folder → face encoded for AI</p>
+                                    </div>
                                 </div>
 
-                                {/* Storage path info */}
-                                {enrollClassId && (
-                                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/10 text-xs text-slate-400">
-                                        <FolderArchive size={12} className="text-blue-400 shrink-0" />
-                                        <span>Stored at: <code className="text-blue-300">student-photos/class/{classes.find(c => c.id === enrollClassId)?.name || enrollClassId}/...</code></span>
+                                {enrollMsg && (
+                                    <div className={`mb-5 p-3 rounded-xl flex items-start gap-2 text-sm font-medium ${enrollMsg.type === "success" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
+                                        {enrollMsg.type === "success" ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <XCircle size={16} className="mt-0.5 shrink-0" />}
+                                        {enrollMsg.text}
                                     </div>
                                 )}
 
-                                <button
-                                    type="submit"
-                                    disabled={enrolling}
-                                    className="mt-2 w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:opacity-90 text-white font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                                >
-                                    {enrolling ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-                                    {enrolling ? "Enrolling..." : "Enroll Student"}
-                                </button>
-                            </form>
-                        </div>
-                    </div>
+                                <form className="flex flex-col gap-4" onSubmit={handleEnroll}>
+                                    {/* Name */}
+                                    <label className="flex flex-col gap-1.5">
+                                        <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Full Name</span>
+                                        <input
+                                            value={fullName} onChange={e => setFullName(e.target.value)}
+                                            className="w-full rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 text-sm py-2.5 px-3 outline-none transition-all"
+                                            placeholder="e.g. John Doe" type="text" required
+                                        />
+                                    </label>
 
-                    {/* RIGHT: Student List */}
-                    <div className="lg:col-span-7 flex flex-col gap-6">
-                        {/* Class selector + search */}
-                        <div className="bg-[#111418] border border-white/8 rounded-2xl p-4 flex flex-wrap gap-3 items-center">
-                            <select
-                                value={selectedClassId}
-                                onChange={e => setSelectedClassId(e.target.value)}
-                                className="rounded-xl border border-white/10 bg-[#1a1f2e] text-white text-sm py-2 px-3 outline-none min-w-[150px]"
-                            >
-                                {classes.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name} — {c.department}</option>
-                                ))}
-                            </select>
-                            <div className="relative flex-1 min-w-[150px]">
-                                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                                <input
-                                    value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                                    className="w-full rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-500 text-sm py-2 pl-8 pr-3 outline-none"
-                                    placeholder="Search by name or reg..."
-                                />
-                            </div>
-                            <button onClick={() => { if (selectedClassId) setLoadingStudents(true); fetchStudentsByClass(selectedClassId).then(setStudents).finally(() => setLoadingStudents(false)); }}
-                                className="p-2 rounded-xl border border-white/10 text-slate-400 hover:text-white transition-colors">
-                                <RefreshCw size={16} />
-                            </button>
-                        </div>
+                                    {/* Reg Number + Class */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <label className="flex flex-col gap-1.5">
+                                            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Reg Number</span>
+                                            <input
+                                                value={regNumber} onChange={e => setRegNumber(e.target.value)}
+                                                className="w-full rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 text-sm py-2.5 px-3 outline-none transition-all"
+                                                placeholder="CS-2024-001" type="text" required
+                                            />
+                                        </label>
+                                        <label className="flex flex-col gap-1.5">
+                                            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Class</span>
+                                            <select
+                                                value={enrollClassId} onChange={e => setEnrollClassId(e.target.value)}
+                                                className="w-full rounded-xl border border-white/10 bg-[#1a1f2e] text-white focus:border-blue-500/50 text-sm py-2.5 px-3 outline-none"
+                                            >
+                                                {classes.map(c => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                    </div>
 
-                        {/* Student Table */}
-                        <div className="bg-[#111418] border border-white/8 rounded-2xl overflow-hidden flex-1">
-                            <div className="p-4 border-b border-white/8 flex justify-between items-center">
-                                <h3 className="font-bold text-white text-sm">
-                                    {selectedClass?.name} — {filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""}
-                                </h3>
-                                {loadingStudents && <Loader2 size={16} className="animate-spin text-slate-400" />}
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-slate-500 uppercase bg-white/3 border-b border-white/8">
-                                        <tr>
-                                            <th className="px-4 py-3 font-semibold">Student</th>
-                                            <th className="px-4 py-3 font-semibold">Photo</th>
-                                            <th className="px-4 py-3 font-semibold">Face Encoding</th>
-                                            <th className="px-4 py-3 font-semibold text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-white/5">
-                                        {filteredStudents.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={4} className="px-4 py-10 text-center text-slate-500">
-                                                    {loadingStudents ? "Loading..." : "No students enrolled in this class yet."}
-                                                </td>
-                                            </tr>
-                                        ) : filteredStudents.map(student => (
-                                            <tr key={student.id} className="hover:bg-white/3 transition-colors">
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-3">
-                                                        {student.photo_url ? (
-                                                            <img
-                                                                src={student.photo_url}
-                                                                alt={student.name}
-                                                                className="w-9 h-9 rounded-full object-cover border border-white/10"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-400">
-                                                                {student.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                                                            </div>
-                                                        )}
-                                                        <div>
-                                                            <div className="font-medium text-white">{student.name}</div>
-                                                            <div className="text-xs text-slate-500">{student.register_number}</div>
+                                    {/* Photo Upload Area */}
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Student Photo</span>
+
+                                        {/* Toggle: upload vs webcam */}
+                                        <div className="flex gap-2 mb-1">
+                                            <button type="button" onClick={() => setUseCamera(false)}
+                                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${!useCamera ? "bg-blue-600 border-blue-600 text-white" : "border-white/10 text-slate-400 hover:text-white"}`}>
+                                                <UploadCloud className="inline w-3 h-3 mr-1" /> Upload
+                                            </button>
+                                            <button type="button" onClick={() => setUseCamera(true)}
+                                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${useCamera ? "bg-blue-600 border-blue-600 text-white" : "border-white/10 text-slate-400 hover:text-white"}`}>
+                                                <Camera className="inline w-3 h-3 mr-1" /> Webcam
+                                            </button>
+                                        </div>
+
+                                        {useCamera ? (
+                                            <div className="rounded-xl overflow-hidden border border-white/10 relative">
+                                                <Webcam
+                                                    ref={webcamRef}
+                                                    audio={false}
+                                                    screenshotFormat="image/jpeg"
+                                                    className="w-full aspect-video object-cover"
+                                                    onUserMedia={() => setIsCameraReady(true)}
+                                                    mirrored
+                                                />
+                                                {isCameraReady && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={captureFromCamera}
+                                                        className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg"
+                                                    >
+                                                        <Camera size={14} /> Capture Photo
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <label className="relative group border-2 border-dashed border-white/10 hover:border-blue-500/50 rounded-xl bg-white/3 p-6 transition-all cursor-pointer flex flex-col items-center justify-center gap-3">
+                                                {photoPreview ? (
+                                                    <div className="relative w-full">
+                                                        <img src={photoPreview} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
+                                                        <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-1">
+                                                            <CheckCircle2 size={14} />
                                                         </div>
                                                     </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    {student.photo_url ? (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                            <CheckCircle2 size={10} /> Stored
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-                                                            <XCircle size={10} /> Missing
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    {student.face_encoding && (student.face_encoding as any[]).length > 0 ? (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                                            <CheckCircle2 size={10} /> {(student.face_encoding as any[]).length}D
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
-                                                            Pending
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        {/* Edit */}
-                                                        <button
-                                                            onClick={() => { setEditingStudent(student); setEditName(student.name); setEditReg(student.register_number); setEditMsg(null); }}
-                                                            title="Edit student"
-                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
-                                                        >
-                                                            <Pencil size={14} />
-                                                        </button>
-                                                        {/* Delete */}
-                                                        <button
-                                                            onClick={() => setDeletingStudentId(student.id)}
-                                                            title="Delete student"
-                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    </div>
-                                                </td>
+                                                ) : (
+                                                    <>
+                                                        <div className="bg-blue-500/10 p-3 rounded-full group-hover:scale-110 transition-transform">
+                                                            <ImagePlus className="text-blue-400" size={24} />
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <p className="text-sm font-medium text-white">Click or drag photo here</p>
+                                                            <p className="text-xs text-slate-500 mt-1">Supports JPG, PNG (Max 5MB)</p>
+                                                        </div>
+                                                    </>
+                                                )}
+                                                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoFileChange} />
+                                            </label>
+                                        )}
+
+                                        {photoPreview && !useCamera && (
+                                            <button type="button" onClick={() => { setPhotoPreview(null); setPhotoFile(null); }}
+                                                className="text-xs text-red-400 hover:text-red-300 transition-colors self-end">
+                                                Remove photo
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Storage path info */}
+                                    {enrollClassId && (
+                                        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/10 text-xs text-slate-400">
+                                            <FolderArchive size={12} className="text-blue-400 shrink-0" />
+                                            <span>Stored at: <code className="text-blue-300">student-photos/class/{classes.find(c => c.id === enrollClassId)?.name || enrollClassId}/...</code></span>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        type="submit"
+                                        disabled={enrolling}
+                                        className="mt-2 w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:opacity-90 text-white font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {enrolling ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                                        {enrolling ? "Enrolling..." : "Enroll Student"}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        {/* RIGHT: Student List */}
+                        <div className="lg:col-span-7 flex flex-col gap-6">
+                            {/* Class selector + search */}
+                            <div className="bg-[#111418] border border-white/8 rounded-2xl p-4 flex flex-wrap gap-3 items-center">
+                                <select
+                                    value={selectedClassId}
+                                    onChange={e => setSelectedClassId(e.target.value)}
+                                    className="rounded-xl border border-white/10 bg-[#1a1f2e] text-white text-sm py-2 px-3 outline-none min-w-[150px]"
+                                >
+                                    {classes.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name} — {c.department}</option>
+                                    ))}
+                                </select>
+                                <div className="relative flex-1 min-w-[150px]">
+                                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                                    <input
+                                        value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                                        className="w-full rounded-xl border border-white/10 bg-white/5 text-white placeholder-slate-500 text-sm py-2 pl-8 pr-3 outline-none"
+                                        placeholder="Search by name or reg..."
+                                    />
+                                </div>
+                                <button onClick={() => { if (selectedClassId) setLoadingStudents(true); fetchStudentsByClass(selectedClassId).then(setStudents).finally(() => setLoadingStudents(false)); }}
+                                    className="p-2 rounded-xl border border-white/10 text-slate-400 hover:text-white transition-colors">
+                                    <RefreshCw size={16} />
+                                </button>
+                            </div>
+
+                            {/* Student Table */}
+                            <div className="bg-[#111418] border border-white/8 rounded-2xl overflow-hidden flex-1">
+                                <div className="p-4 border-b border-white/8 flex justify-between items-center">
+                                    <h3 className="font-bold text-white text-sm">
+                                        {selectedClass?.name} — {filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""}
+                                    </h3>
+                                    {loadingStudents && <Loader2 size={16} className="animate-spin text-slate-400" />}
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs text-slate-500 uppercase bg-white/3 border-b border-white/8">
+                                            <tr>
+                                                <th className="px-4 py-3 font-semibold">Student</th>
+                                                <th className="px-4 py-3 font-semibold">Photo</th>
+                                                <th className="px-4 py-3 font-semibold">Face Encoding</th>
+                                                <th className="px-4 py-3 font-semibold text-right">Actions</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-white/5">
+                                            {filteredStudents.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={4} className="px-4 py-10 text-center text-slate-500">
+                                                        {loadingStudents ? "Loading..." : "No students enrolled in this class yet."}
+                                                    </td>
+                                                </tr>
+                                            ) : filteredStudents.map(student => (
+                                                <tr key={student.id} className="hover:bg-white/3 transition-colors">
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-3">
+                                                            {student.photo_url ? (
+                                                                <img
+                                                                    src={student.photo_url}
+                                                                    alt={student.name}
+                                                                    className="w-9 h-9 rounded-full object-cover border border-white/10"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-400">
+                                                                    {student.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                                                                </div>
+                                                            )}
+                                                            <div>
+                                                                <div className="font-medium text-white">{student.name}</div>
+                                                                <div className="text-xs text-slate-500">{student.register_number}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        {student.photo_url ? (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                                <CheckCircle2 size={10} /> Stored
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                                                                <XCircle size={10} /> Missing
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        {student.face_encoding && (student.face_encoding as any[]).length > 0 ? (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                                <CheckCircle2 size={10} /> {(student.face_encoding as any[]).length}D
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+                                                                Pending
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            {/* Edit */}
+                                                            <button
+                                                                onClick={() => { setEditingStudent(student); setEditName(student.name); setEditReg(student.register_number); setEditMsg(null); }}
+                                                                title="Edit student"
+                                                                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                                                            >
+                                                                <Pencil size={14} />
+                                                            </button>
+                                                            {/* Delete */}
+                                                            <button
+                                                                onClick={() => setDeletingStudentId(student.id)}
+                                                                title="Delete student"
+                                                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        {/* ── Edit Student Modal ── */ }
-    {
-        editingStudent && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-[#111418] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-                    <div className="flex justify-between items-center mb-5">
-                        <h2 className="text-lg font-bold text-white">Edit Student</h2>
-                        <button onClick={() => setEditingStudent(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
-                            <X size={18} />
-                        </button>
-                    </div>
-                    {editMsg && (
-                        <div className={`mb-4 p-3 rounded-xl flex items-center gap-2 text-sm font-medium ${editMsg!.type === "success" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
-                            {editMsg!.type === "success" ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-                            {editMsg!.text}
+            {/* ── Edit Student Modal ── */}
+            {
+                editingStudent && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                        <div className="bg-[#111418] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                            <div className="flex justify-between items-center mb-5">
+                                <h2 className="text-lg font-bold text-white">Edit Student</h2>
+                                <button onClick={() => setEditingStudent(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            {editMsg && (
+                                <div className={`mb-4 p-3 rounded-xl flex items-center gap-2 text-sm font-medium ${editMsg!.type === "success" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
+                                    {editMsg!.type === "success" ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                                    {editMsg!.text}
+                                </div>
+                            )}
+                            <div className="space-y-4">
+                                <label className="block">
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Full Name</span>
+                                    <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
+                                        className="mt-1.5 w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm" />
+                                </label>
+                                <label className="block">
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Register Number</span>
+                                    <input type="text" value={editReg} onChange={e => setEditReg(e.target.value)}
+                                        className="mt-1.5 w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm" />
+                                </label>
+                                <div className="flex gap-3 pt-2">
+                                    <button onClick={() => setEditingStudent(null)} className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 text-sm font-semibold transition-colors">
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            if (!editName.trim()) return;
+                                            setEditSaving(true); setEditMsg(null);
+                                            try {
+                                                await updateStudent(editingStudent!.id, { name: editName.trim(), register_number: editReg.trim() });
+                                                setStudents(prev => prev.map(s => s.id === editingStudent!.id ? { ...s, name: editName.trim(), register_number: editReg.trim() } : s));
+                                                setEditMsg({ type: "success", text: "✅ Student updated!" });
+                                                setTimeout(() => setEditingStudent(null), 800);
+                                            } catch (e: any) {
+                                                setEditMsg({ type: "error", text: e.message || "Failed to update." });
+                                            } finally { setEditSaving(false); }
+                                        }}
+                                        disabled={editSaving}
+                                        className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {editSaving ? <Loader2 size={14} className="animate-spin" /> : null}
+                                        {editSaving ? "Saving..." : "Save Changes"}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    )}
-                    <div className="space-y-4">
-                        <label className="block">
-                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Full Name</span>
-                            <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
-                                className="mt-1.5 w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm" />
-                        </label>
-                        <label className="block">
-                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Register Number</span>
-                            <input type="text" value={editReg} onChange={e => setEditReg(e.target.value)}
-                                className="mt-1.5 w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm" />
-                        </label>
-                        <div className="flex gap-3 pt-2">
-                            <button onClick={() => setEditingStudent(null)} className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 text-sm font-semibold transition-colors">
-                                Cancel
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    if (!editName.trim()) return;
-                                    setEditSaving(true); setEditMsg(null);
-                                    try {
-                                        await updateStudent(editingStudent!.id, { name: editName.trim(), register_number: editReg.trim() });
-                                        setStudents(prev => prev.map(s => s.id === editingStudent!.id ? { ...s, name: editName.trim(), register_number: editReg.trim() } : s));
-                                        setEditMsg({ type: "success", text: "✅ Student updated!" });
-                                        setTimeout(() => setEditingStudent(null), 800);
-                                    } catch (e: any) {
-                                        setEditMsg({ type: "error", text: e.message || "Failed to update." });
-                                    } finally { setEditSaving(false); }
-                                }}
-                                disabled={editSaving}
-                                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                            >
-                                {editSaving ? <Loader2 size={14} className="animate-spin" /> : null}
-                                {editSaving ? "Saving..." : "Save Changes"}
-                            </button>
-                        </div>
                     </div>
-                </div>
-            </div>
-        )
-    }
+                )
+            }
 
-    {/* ── Delete Student Confirmation ── */ }
-    {
-        deletingStudentId && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-[#111418] border border-red-500/30 rounded-2xl w-full max-w-sm p-6 shadow-2xl text-center">
-                    <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
-                        <Trash2 className="text-red-400" size={22} />
+            {/* ── Delete Student Confirmation ── */}
+            {
+                deletingStudentId && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                        <div className="bg-[#111418] border border-red-500/30 rounded-2xl w-full max-w-sm p-6 shadow-2xl text-center">
+                            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                                <Trash2 className="text-red-400" size={22} />
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-2">Delete Student?</h3>
+                            <p className="text-slate-400 text-sm mb-6">This will permanently delete the student record. Attendance records are not affected.</p>
+                            <div className="flex gap-3">
+                                <button onClick={() => setDeletingStudentId(null)} className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 text-sm font-semibold transition-colors">
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        setDeletingStudent(true);
+                                        try {
+                                            await deleteStudent(deletingStudentId as string);
+                                            setStudents(prev => prev.filter(s => s.id !== deletingStudentId));
+                                            setDeletingStudentId(null);
+                                        } catch (e: any) {
+                                            alert(e.message || "Failed to delete.");
+                                        } finally { setDeletingStudent(false); }
+                                    }}
+                                    disabled={deletingStudent}
+                                    className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
+                                    {deletingStudent ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                    {deletingStudent ? "Deleting..." : "Delete"}
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <h3 className="text-lg font-bold text-white mb-2">Delete Student?</h3>
-                    <p className="text-slate-400 text-sm mb-6">This will permanently delete the student record. Attendance records are not affected.</p>
-                    <div className="flex gap-3">
-                        <button onClick={() => setDeletingStudentId(null)} className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 text-sm font-semibold transition-colors">
-                            Cancel
-                        </button>
-                        <button
-                            onClick={async () => {
-                                setDeletingStudent(true);
-                                try {
-                                    await deleteStudent(deletingStudentId as string);
-                                    setStudents(prev => prev.filter(s => s.id !== deletingStudentId));
-                                    setDeletingStudentId(null);
-                                } catch (e: any) {
-                                    alert(e.message || "Failed to delete.");
-                                } finally { setDeletingStudent(false); }
-                            }}
-                            disabled={deletingStudent}
-                            className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            {deletingStudent ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                            {deletingStudent ? "Deleting..." : "Delete"}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-    </div >
+                )
+            }
+        </>
     );
 }

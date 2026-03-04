@@ -50,7 +50,7 @@ export default function NotificationsPage() {
                                 <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">Live session for CS-Batch-2024-A synced successfully with InsForge Database.</p>
                                 <div className="flex items-center gap-4 mt-3">
                                     <span className="text-xs text-slate-500 flex items-center gap-1"><Clock size={12} /> 1 hour ago</span>
-                                    <Link href="/reports/period" className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-primary transition-colors hover:underline">View report</Link>
+                                    <Link href="/reports/period-wise" className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-primary transition-colors hover:underline">View report</Link>
                                 </div>
                             </div>
                         </div>

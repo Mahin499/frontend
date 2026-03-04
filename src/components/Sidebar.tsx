@@ -26,14 +26,14 @@ const navItems = [
     { href: "/faculty", icon: Users, label: "Faculty" },
     { href: "/students", icon: GraduationCap, label: "Students" },
     { href: "/classes", icon: BookOpen, label: "Classes" },
-    { href: "/session", icon: Video, label: "Live Session" },
+    { href: "/live-session", icon: Video, label: "Live Session" },
     { href: "/meetings", icon: CalendarCheck, label: "Meetings" },
     { href: "/settings", icon: Settings2, label: "Settings" },
 ];
 
 const reportItems = [
-    { href: "/reports/daily", icon: CalendarDays, label: "Whole-Day" },
-    { href: "/reports/period", icon: Clock, label: "Period-Wise" },
+    { href: "/reports/whole-day", icon: CalendarDays, label: "Whole-Day" },
+    { href: "/reports/period-wise", icon: Clock, label: "Period-Wise" },
     { href: "/reports/monthly", icon: CalendarRange, label: "Monthly" },
 ];
 

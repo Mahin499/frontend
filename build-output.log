@@ -1,0 +1,26 @@
+
+> frontend@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+ΓÜá The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./src/app/(protected)/students/page.tsx:481:9
+Parsing ecmascript source code failed
+  479 |         </div>
+  480 |
+> 481 |         {/* ΓöÇΓöÇ Edit Student Modal ΓöÇΓöÇ */ }
+      |         ^
+  482 |     {
+  483 |         editingStudent && (
+  484 |             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+
+Expected ',', got '{'
+
+
+    at <unknown> (./src/app/(protected)/students/page.tsx:481:9)

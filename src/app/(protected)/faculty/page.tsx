@@ -218,7 +218,7 @@ export default function FacultyDashboardPage() {
                                             <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">42</td>
                                             <td className="px-6 py-4"><span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">91%</span></td>
                                             <td className="px-6 py-4">
-                                                <Link href="/session" className="inline-flex px-3 py-1.5 bg-primary/10 dark:bg-primary/20 text-primary text-xs font-semibold rounded-lg hover:bg-primary/20 transition-colors">Take Attendance</Link>
+                                                <Link href="/live-session" className="inline-flex px-3 py-1.5 bg-primary/10 dark:bg-primary/20 text-primary text-xs font-semibold rounded-lg hover:bg-primary/20 transition-colors">Take Attendance</Link>
                                             </td>
                                         </tr>
                                         <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -229,7 +229,7 @@ export default function FacultyDashboardPage() {
                                             <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">38</td>
                                             <td className="px-6 py-4"><span className="text-amber-600 dark:text-amber-400 font-bold text-sm">78%</span></td>
                                             <td className="px-6 py-4">
-                                                <Link href="/session" className="inline-flex px-3 py-1.5 bg-primary/10 dark:bg-primary/20 text-primary text-xs font-semibold rounded-lg hover:bg-primary/20 transition-colors">Take Attendance</Link>
+                                                <Link href="/live-session" className="inline-flex px-3 py-1.5 bg-primary/10 dark:bg-primary/20 text-primary text-xs font-semibold rounded-lg hover:bg-primary/20 transition-colors">Take Attendance</Link>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -274,11 +274,11 @@ export default function FacultyDashboardPage() {
                         <div className="bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark p-6 shadow-sm">
                             <h3 className="font-bold text-slate-900 dark:text-white mb-4">Quick Actions</h3>
                             <div className="space-y-2">
-                                <Link href="/session" className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
+                                <Link href="/live-session" className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
                                     <div className="p-2 rounded-lg bg-primary/10 text-primary"><Video size={18} /></div>
                                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-primary dark:group-hover:text-white transition-colors">Start Live Attendance</span>
                                 </Link>
-                                <Link href="/reports/period" className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
+                                <Link href="/reports/period-wise" className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
                                     <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"><Clock size={18} /></div>
                                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-emerald-600 dark:group-hover:text-white transition-colors">Period-Wise Report</span>
                                 </Link>

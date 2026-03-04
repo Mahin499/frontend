@@ -64,12 +64,12 @@ export default function Home() {
         <NavCard href="/forgot-password" icon={<Unlock className="text-slate-300" />} title="Reset Password" desc="Secure multi-step password reset flow." color="slate" />
         <NavCard href="/dashboard" icon={<ShieldCheck className="text-primary" />} title="Principal Dashboard" desc="Institute-wide stats and anomaly alerts." color="primary" badge="PRINCIPAL" />
         <NavCard href="/faculty" icon={<School className="text-violet-400" />} title="Faculty Dashboard" desc="Class-specific attendance and sleep analytics." color="violet" badge="FACULTY" />
-        <NavCard href="/session" icon={<Video className="text-red-400" />} title="Live AI Session" desc="Real-time face detection with 98%+ confidence." color="red" badge="LIVE" />
+        <NavCard href="/live-session" icon={<Video className="text-red-400" />} title="Live AI Session" desc="Real-time face detection with 98%+ confidence." color="red" badge="LIVE" />
         <NavCard href="/ai-validation" icon={<Cpu className="text-indigo-400" />} title="AI Validation Queue" desc="Review flagged anomalies via Gemini AI." color="indigo" badge="GEMINI AI" />
         <NavCard href="/students" icon={<Users className="text-teal-400" />} title="Student Management" desc="Enroll via CSV & ZIP bulk upload." color="teal" />
         <NavCard href="/classes" icon={<BookOpen className="text-amber-400" />} title="Class Management" desc="Create classes and view per-class stats." color="amber" />
-        <NavCard href="/reports/daily" icon={<CalendarDays className="text-green-400" />} title="Whole-Day Report" desc="Full day log with export options." color="green" />
-        <NavCard href="/reports/period" icon={<Clock className="text-orange-400" />} title="Period-Wise Report" desc="Confidence scores and sleep detection data." color="orange" />
+        <NavCard href="/reports/whole-day" icon={<CalendarDays className="text-green-400" />} title="Whole-Day Report" desc="Full day log with export options." color="green" />
+        <NavCard href="/reports/period-wise" icon={<Clock className="text-orange-400" />} title="Period-Wise Report" desc="Confidence scores and sleep detection data." color="orange" />
         <NavCard href="/reports/monthly" icon={<CalendarRange className="text-pink-400" />} title="Monthly Report" desc="Institute-wide monthly analytics." color="pink" />
       </div>
 

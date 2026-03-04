@@ -179,10 +179,10 @@ export default function ClassesManagementPage() {
                                 </div>
 
                                 <div className="flex gap-2 mt-auto">
-                                    <Link href="/reports/period" className="flex-1 py-2 text-center text-xs font-semibold bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors">
+                                    <Link href="/reports/period-wise" className="flex-1 py-2 text-center text-xs font-semibold bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors">
                                         Report
                                     </Link>
-                                    <Link href="/session" className="flex-1 py-2 text-center text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors">
+                                    <Link href="/live-session" className="flex-1 py-2 text-center text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors">
                                         Take Att.
                                     </Link>
                                 </div>
