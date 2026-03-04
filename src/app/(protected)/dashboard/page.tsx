@@ -13,10 +13,16 @@ import {
     FileText,
     Settings,
     Calendar,
-    Clock
+    Clock,
+    Loader2
 } from "lucide-react";
+import { useStudentCount, useFacultyCount, usePendingApprovals } from "@/utils/insforge/realtime";
 
 export default function DashboardPage() {
+    const studentCount = useStudentCount();
+    const facultyCount = useFacultyCount();
+    const pendingApprovals = usePendingApprovals();
+
     return (
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 w-full min-w-0">
             <div className="max-w-7xl mx-auto space-y-8">
@@ -34,7 +40,9 @@ export default function DashboardPage() {
                             </span>
                         </div>
                         <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Students</p>
-                        <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">1,240</h3>
+                        <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+                            {studentCount === null ? <Loader2 size={22} className="animate-spin text-primary" /> : studentCount.toLocaleString()}
+                        </h3>
                     </div>
 
                     {/* Total Faculty */}
@@ -48,7 +56,12 @@ export default function DashboardPage() {
                             </span>
                         </div>
                         <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Faculty</p>
-                        <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">85</h3>
+                        <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+                            {facultyCount === null ? <Loader2 size={22} className="animate-spin text-violet-400" /> : facultyCount}
+                            {pendingApprovals !== null && pendingApprovals > 0 && (
+                                <Link href="/faculty" className="text-xs font-semibold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full hover:bg-amber-400/20 transition-colors">{pendingApprovals} pending</Link>
+                            )}
+                        </h3>
                     </div>
 
                     {/* Avg Attendance */}

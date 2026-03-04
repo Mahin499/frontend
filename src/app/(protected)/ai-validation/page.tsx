@@ -6,6 +6,7 @@ import {
     Filter, CheckCircle2, User, AlertTriangle, Sparkles, Brain,
     Clock, HelpCircle, X, Search, Download, CheckCheck, Eye, EyeOff
 } from "lucide-react";
+import { writeAIValidation } from "@/utils/insforge/realtime";
 
 type Status = "pending" | "confirmed" | "rejected" | "investigating";
 
@@ -66,15 +67,27 @@ export default function AIValidationPage() {
 
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
-    const update = (id: number, status: Status) =>
+    const update = (id: number, status: Status) => {
         setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+        // Persist to DB (fire-and-forget)
+        const item = INITIAL_ITEMS.find(i => i.id === id);
+        if (item && status !== "pending") {
+            writeAIValidation(String(id), status as any).catch(() => { });
+        }
+    };
 
     const approveAllHigh = () => {
         let count = 0;
+        const ids: number[] = [];
         setItems(prev => prev.map(i => {
-            if (i.confidence >= 85 && i.status === "pending") { count++; return { ...i, status: "confirmed" }; }
+            if (i.confidence >= 85 && i.status === "pending") {
+                count++;
+                ids.push(i.id);
+                return { ...i, status: "confirmed" };
+            }
             return i;
         }));
+        ids.forEach(id => writeAIValidation(String(id), "confirmed").catch(() => { }));
         showToast(`✅ Approved ${count} high-confidence item(s)`);
     };
 

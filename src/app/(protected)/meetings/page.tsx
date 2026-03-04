@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
     Plus, X, Video, Calendar, Clock, Link2, Pencil, Trash2,
     Loader2, CheckCircle2, AlertCircle, ExternalLink, Copy, Check,
-    Users, Globe
+    Users, Globe, FileText, UserCheck, UserX, ClipboardList
 } from "lucide-react";
 import { getInsforgeClient } from "@/utils/insforge/client";
 
@@ -19,9 +19,18 @@ interface Meeting {
     scheduled_at: string;
     ends_at: string | null;
     created_by_role: string;
+    conducted_by: string | null;
     status: string;
     invited_roles: string[];
+    agenda: string | null;
+    meeting_notes: string | null;
+    participants: string[] | null;
     created_at: string;
+}
+
+interface AttendanceRecord {
+    faculty_name: string;
+    status: "present" | "absent" | "late" | "pending";
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -39,23 +48,35 @@ const STATUS_CONFIG: Record<string, { label: string; classes: string; dot: strin
     cancelled: { label: "Cancelled", classes: "bg-slate-500/10 text-slate-400 border-slate-500/20", dot: "bg-slate-400" },
 };
 
+const ATT_STYLES: Record<string, string> = {
+    present: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+    absent: "bg-red-500/10 text-red-400 border-red-500/30",
+    late: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+    pending: "bg-slate-500/10 text-slate-400 border-slate-500/30",
+};
+
 function getMeetingTypeInfo(type: string) {
     return MEETING_TYPES.find(t => t.value === type) || MEETING_TYPES[3];
 }
 
 function fmtDate(iso: string) {
-    const d = new Date(iso);
-    return d.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    return new Date(iso).toLocaleString("en-IN", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+    });
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function MeetingsPage() {
+    const client = getInsforgeClient();
+
+    // List state
     const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState("all");
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
-    // Modal
+    // Create/edit modal
     const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
     const [editing, setEditing] = useState<Meeting | null>(null);
     const [saving, setSaving] = useState(false);
@@ -69,29 +90,93 @@ export default function MeetingsPage() {
     const [fDate, setFDate] = useState("");
     const [fEnds, setFEnds] = useState("");
     const [fRole, setFRole] = useState("principal");
+    const [fConductedBy, setFConductedBy] = useState("");
     const [fInvited, setFInvited] = useState<string[]>(["faculty"]);
     const [fStatus, setFStatus] = useState("upcoming");
+    const [fAgenda, setFAgenda] = useState("");
+    const [fNotes, setFNotes] = useState("");
+    const [fParticipants, setFParticipants] = useState("");
 
     // Delete
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
 
-    const client = getInsforgeClient();
+    // Attendance panel (expanded card)
+    const [attOpen, setAttOpen] = useState<string | null>(null);
+    const [attData, setAttData] = useState<Record<string, AttendanceRecord[]>>({});
+    const [attSaving, setAttSaving] = useState(false);
+    const [attEdits, setAttEdits] = useState<Record<string, "present" | "absent" | "late" | "pending">>({});
 
     useEffect(() => { loadMeetings(); }, []);
 
+    // ── Data helpers ──────────────────────────────────────────────────────────
     const loadMeetings = async () => {
         setLoading(true);
         try {
-            const { data, error } = await (client as any).db.from("meetings").select("*").order("scheduled_at", { ascending: false });
-            if (!error) setMeetings(data || []);
+            const { data } = await (client as any).db
+                .from("meetings").select("*").order("scheduled_at", { ascending: false });
+            setMeetings(data || []);
         } finally { setLoading(false); }
     };
 
+    const openAttendance = async (m: Meeting) => {
+        if (attOpen === m.id) { setAttOpen(null); return; }
+        setAttOpen(m.id);
+        if (attData[m.id]) return; // already loaded
+        try {
+            const { data } = await (client as any).db
+                .from("meeting_attendance").select("*").eq("meeting_id", m.id);
+            const existing: Record<string, "present" | "absent" | "late" | "pending"> = {};
+            (data || []).forEach((r: any) => { existing[r.faculty_name] = r.status; });
+            // Merge with participant list
+            const parts = m.participants || [];
+            const records: AttendanceRecord[] = parts.map(p => ({
+                faculty_name: p,
+                status: existing[p] || "pending",
+            }));
+            setAttData(prev => ({ ...prev, [m.id]: records }));
+            setAttEdits(prev => ({ ...prev, ...existing }));
+        } catch (_) {
+            setAttData(prev => ({ ...prev, [m.id]: (m.participants || []).map(p => ({ faculty_name: p, status: "pending" as const })) }));
+        }
+    };
+
+    const saveAttendance = async (meetingId: string) => {
+        setAttSaving(true);
+        try {
+            const records = (attData[meetingId] || []).map(r => ({
+                meeting_id: meetingId,
+                faculty_name: r.faculty_name,
+                status: attEdits[r.faculty_name] || r.status,
+                marked_at: new Date().toISOString(),
+            }));
+            for (const rec of records) {
+                await (client as any).db.from("meeting_attendance")
+                    .upsert([rec], { onConflict: "meeting_id,faculty_name" });
+            }
+            // Update local state
+            setAttData(prev => ({
+                ...prev,
+                [meetingId]: records.map(r => ({ faculty_name: r.faculty_name, status: r.status as any })),
+            }));
+        } catch (_) { } finally { setAttSaving(false); }
+    };
+
+    const toggleAttStatus = (meetingId: string, name: string, status: "present" | "absent" | "late") => {
+        setAttEdits(prev => ({ ...prev, [name]: prev[name] === status ? "pending" : status }));
+        setAttData(prev => ({
+            ...prev,
+            [meetingId]: (prev[meetingId] || []).map(r =>
+                r.faculty_name === name ? { ...r, status: r.status === status ? "pending" : status } : r
+            ),
+        }));
+    };
+
+    // ── Modal helpers ─────────────────────────────────────────────────────────
     const openCreate = () => {
         setFTitle(""); setFDesc(""); setFType("gmeet"); setFLink("");
-        const now = new Date(); now.setMinutes(0, 0, 0);
-        now.setHours(now.getHours() + 1);
+        setFAgenda(""); setFNotes(""); setFParticipants(""); setFConductedBy("");
+        const now = new Date(); now.setMinutes(0, 0, 0); now.setHours(now.getHours() + 1);
         setFDate(now.toISOString().slice(0, 16));
         const end = new Date(now); end.setHours(end.getHours() + 1);
         setFEnds(end.toISOString().slice(0, 16));
@@ -104,18 +189,31 @@ export default function MeetingsPage() {
         setFLink(m.meeting_link || "");
         setFDate(m.scheduled_at ? new Date(m.scheduled_at).toISOString().slice(0, 16) : "");
         setFEnds(m.ends_at ? new Date(m.ends_at).toISOString().slice(0, 16) : "");
-        setFRole(m.created_by_role); setFInvited(m.invited_roles); setFStatus(m.status);
+        setFRole(m.created_by_role); setFInvited(m.invited_roles || []); setFStatus(m.status);
+        setFAgenda(m.agenda || ""); setFNotes(m.meeting_notes || "");
+        setFConductedBy(m.conducted_by || "");
+        setFParticipants((m.participants || []).join(", "));
         setMsg(null); setEditing(m); setModalMode("edit");
     };
 
     const handleSave = async () => {
-        if (!fTitle.trim() || !fDate) { setMsg({ type: "error", text: "Title and date are required." }); return; }
+        if (!fTitle.trim() || !fDate) { setMsg({ type: "error", text: "Title and start date are required." }); return; }
         setSaving(true); setMsg(null);
         const payload = {
-            title: fTitle.trim(), description: fDesc.trim() || null, meeting_type: fType,
-            meeting_link: fLink.trim() || null, scheduled_at: new Date(fDate).toISOString(),
+            title: fTitle.trim(),
+            description: fDesc.trim() || null,
+            meeting_type: fType,
+            meeting_link: fLink.trim() || null,
+            scheduled_at: new Date(fDate).toISOString(),
             ends_at: fEnds ? new Date(fEnds).toISOString() : null,
-            created_by_role: fRole, invited_roles: fInvited, status: fStatus, updated_at: new Date().toISOString(),
+            created_by_role: fRole,
+            conducted_by: fConductedBy.trim() || null,
+            invited_roles: fInvited,
+            status: fStatus,
+            agenda: fAgenda.trim() || null,
+            meeting_notes: fNotes.trim() || null,
+            participants: fParticipants ? fParticipants.split(",").map(s => s.trim()).filter(Boolean) : [],
+            updated_at: new Date().toISOString(),
         };
         try {
             if (modalMode === "create") {
@@ -149,12 +247,12 @@ export default function MeetingsPage() {
         setCopiedId(id); setTimeout(() => setCopiedId(null), 2000);
     };
 
-    const toggleInvited = (role: string) => {
+    const toggleInvited = (role: string) =>
         setFInvited(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]);
-    };
 
     const filtered = meetings.filter(m => filterStatus === "all" || m.status === filterStatus);
 
+    // ─── Render ──────────────────────────────────────────────────────────────
     return (
         <div className="flex-1 overflow-y-auto overflow-x-hidden w-full bg-background-light dark:bg-background-dark">
             <div className="p-4 md:p-8 max-w-7xl mx-auto pb-20">
@@ -166,10 +264,11 @@ export default function MeetingsPage() {
                             <Link href="/dashboard" className="hover:text-primary">Dashboard</Link><span>/</span>
                             <span className="text-slate-900 dark:text-white">Meetings</span>
                         </div>
-                        <h1 className="text-3xl font-black text-slate-900 dark:text-white">Meetings</h1>
-                        <p className="text-slate-500 mt-1">Schedule and share meeting links (Google Meet, Zoom, Teams) with faculty & staff</p>
+                        <h1 className="text-3xl font-black text-slate-900 dark:text-white">Faculty Meetings</h1>
+                        <p className="text-slate-500 mt-1">Schedule meetings with agenda, notes, and attendance tracking</p>
                     </div>
-                    <button onClick={openCreate} className="flex items-center justify-center gap-2 px-5 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary/20">
+                    <button onClick={openCreate}
+                        className="flex items-center justify-center gap-2 px-5 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary/20 flex-shrink-0">
                         <Plus size={20} /> New Meeting
                     </button>
                 </div>
@@ -179,8 +278,9 @@ export default function MeetingsPage() {
                     {["all", "upcoming", "live", "completed", "cancelled"].map(s => (
                         <button key={s} onClick={() => setFilterStatus(s)}
                             className={`px-4 py-1.5 rounded-full text-sm font-semibold border capitalize transition-all ${filterStatus === s
-                                ? "bg-primary text-white border-primary"
-                                : "bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark text-slate-500 hover:text-slate-900 dark:hover:text-white"}`}>
+                                    ? "bg-primary text-white border-primary"
+                                    : "bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                }`}>
                             {s === "all" ? "All" : STATUS_CONFIG[s]?.label || s}
                         </button>
                     ))}
@@ -188,7 +288,9 @@ export default function MeetingsPage() {
 
                 {/* Meetings List */}
                 {loading ? (
-                    <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin text-primary" size={32} /></div>
+                    <div className="flex items-center justify-center py-20">
+                        <Loader2 className="animate-spin text-primary" size={32} />
+                    </div>
                 ) : filtered.length === 0 ? (
                     <div className="text-center py-20 text-slate-500">
                         <Video size={48} className="mx-auto mb-4 opacity-30" />
@@ -200,9 +302,12 @@ export default function MeetingsPage() {
                         {filtered.map(m => {
                             const typeInfo = getMeetingTypeInfo(m.meeting_type);
                             const statusCfg = STATUS_CONFIG[m.status] || STATUS_CONFIG.upcoming;
+                            const isAttOpen = attOpen === m.id;
                             return (
-                                <div key={m.id} className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-5 hover:shadow-lg hover:border-primary/30 transition-all group">
-                                    {/* Top row */}
+                                <div key={m.id}
+                                    className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-5 hover:shadow-lg hover:border-primary/30 transition-all group">
+
+                                    {/* Top badges + actions */}
                                     <div className="flex justify-between items-start mb-3">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${typeInfo.bg} ${typeInfo.color}`}>
@@ -213,15 +318,26 @@ export default function MeetingsPage() {
                                                 {statusCfg.label}
                                             </span>
                                         </div>
-                                        {/* Edit / Delete (only principal or faculty of that meeting can edit) */}
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => openEdit(m)} title="Edit" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"><Pencil size={14} /></button>
-                                            <button onClick={() => setDeletingId(m.id)} title="Delete" className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={14} /></button>
+                                            {m.participants && m.participants.length > 0 && (
+                                                <button onClick={() => openAttendance(m)} title="Mark Attendance"
+                                                    className={`p-1.5 rounded-lg transition-colors ${isAttOpen ? "text-primary bg-primary/10" : "text-slate-400 hover:text-primary hover:bg-primary/10"}`}>
+                                                    <ClipboardList size={14} />
+                                                </button>
+                                            )}
+                                            <button onClick={() => openEdit(m)} title="Edit"
+                                                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors">
+                                                <Pencil size={14} />
+                                            </button>
+                                            <button onClick={() => setDeletingId(m.id)} title="Delete"
+                                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                                                <Trash2 size={14} />
+                                            </button>
                                         </div>
                                     </div>
 
                                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{m.title}</h3>
-                                    {m.description && <p className="text-sm text-slate-500 mb-3 line-clamp-2">{m.description}</p>}
+                                    {m.description && <p className="text-sm text-slate-500 mb-2 line-clamp-2">{m.description}</p>}
 
                                     {/* Date & Time */}
                                     <div className="flex items-center gap-4 mb-3 text-sm text-slate-500">
@@ -229,28 +345,101 @@ export default function MeetingsPage() {
                                         {m.ends_at && <span className="flex items-center gap-1.5"><Clock size={13} /> ends {fmtDate(m.ends_at)}</span>}
                                     </div>
 
-                                    {/* Invited Roles */}
-                                    <div className="flex items-center gap-2 mb-4 text-xs text-slate-400">
+                                    {/* Invited + Conducted By */}
+                                    <div className="flex items-center gap-2 mb-3 text-xs text-slate-400 flex-wrap">
                                         <Users size={12} />
-                                        Invited: {(m.invited_roles || []).map(r => <span key={r} className="capitalize">{r}</span>).reduce((a: any, b: any) => a ? <>{a}, {b}</> : b, null)}
-                                        {" "}· By <span className="capitalize font-medium text-slate-300">{m.created_by_role}</span>
+                                        <span>Invited: {(m.invited_roles || []).join(", ")}</span>
+                                        <span>·</span>
+                                        <span>By <span className="capitalize font-medium text-slate-500 dark:text-slate-300">{m.created_by_role}</span></span>
+                                        {m.conducted_by && (
+                                            <>
+                                                <span>·</span>
+                                                <span>🎤 <span className="font-medium text-slate-500 dark:text-slate-300">{m.conducted_by}</span></span>
+                                            </>
+                                        )}
                                     </div>
 
                                     {/* Meeting Link */}
                                     {m.meeting_link ? (
-                                        <div className="flex items-center gap-2 p-2.5 bg-primary/5 border border-primary/15 rounded-xl">
+                                        <div className="flex items-center gap-2 p-2.5 bg-primary/5 border border-primary/15 rounded-xl mb-3">
                                             <Link2 size={14} className="text-primary flex-shrink-0" />
                                             <span className="text-xs text-slate-400 truncate flex-1">{m.meeting_link}</span>
-                                            <button onClick={() => copyLink(m.meeting_link!, m.id)} className="p-1 rounded text-slate-400 hover:text-primary transition-colors flex-shrink-0">
+                                            <button onClick={() => copyLink(m.meeting_link!, m.id)}
+                                                className="p-1 rounded text-slate-400 hover:text-primary transition-colors flex-shrink-0">
                                                 {copiedId === m.id ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                                             </button>
-                                            <a href={m.meeting_link} target="_blank" rel="noopener noreferrer" className="p-1 rounded text-slate-400 hover:text-primary transition-colors flex-shrink-0">
+                                            <a href={m.meeting_link} target="_blank" rel="noopener noreferrer"
+                                                className="p-1 rounded text-slate-400 hover:text-primary transition-colors flex-shrink-0">
                                                 <ExternalLink size={13} />
                                             </a>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-2 p-2.5 bg-amber-500/5 border border-amber-500/20 rounded-xl text-xs text-amber-400">
+                                        <div className="flex items-center gap-2 p-2.5 bg-amber-500/5 border border-amber-500/20 rounded-xl mb-3 text-xs text-amber-400">
                                             <AlertCircle size={13} /> No meeting link added yet
+                                        </div>
+                                    )}
+
+                                    {/* Agenda */}
+                                    {m.agenda && (
+                                        <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-border-light dark:border-border-dark mb-2">
+                                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
+                                                <FileText size={11} /> Agenda
+                                            </p>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap line-clamp-3">{m.agenda}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Participants */}
+                                    {m.participants && m.participants.length > 0 && (
+                                        <div className="mb-2">
+                                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
+                                                <Users size={11} /> Participants ({m.participants.length})
+                                            </p>
+                                            <div className="flex flex-wrap gap-1">
+                                                {m.participants.map(p => (
+                                                    <span key={p} className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs font-medium">{p}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Meeting Notes */}
+                                    {m.meeting_notes && (
+                                        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
+                                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">📝 Notes</p>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap line-clamp-2">{m.meeting_notes}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Attendance Panel */}
+                                    {isAttOpen && attData[m.id] && (
+                                        <div className="mt-3 border-t border-border-light dark:border-border-dark pt-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                                    <ClipboardList size={11} /> Mark Attendance
+                                                </p>
+                                                <button onClick={() => saveAttendance(m.id)} disabled={attSaving}
+                                                    className="flex items-center gap-1 px-2.5 py-1 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-bold disabled:opacity-50 transition-colors">
+                                                    {attSaving ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
+                                                    Save
+                                                </button>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                {attData[m.id].map(r => (
+                                                    <div key={r.faculty_name} className="flex items-center justify-between gap-2">
+                                                        <span className="text-xs text-slate-700 dark:text-slate-300 font-medium truncate">{r.faculty_name}</span>
+                                                        <div className="flex gap-1 flex-shrink-0">
+                                                            {(["present", "absent", "late"] as const).map(s => (
+                                                                <button key={s} onClick={() => toggleAttStatus(m.id, r.faculty_name, s)}
+                                                                    className={`px-2 py-0.5 rounded text-xs font-bold border capitalize transition-all ${r.status === s ? ATT_STYLES[s] : "text-slate-400 border-border-dark hover:text-slate-300"
+                                                                        }`}>
+                                                                    {s === "present" ? <UserCheck size={10} className="inline mr-0.5" /> : s === "absent" ? <UserX size={10} className="inline mr-0.5" /> : null}{s}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -268,35 +457,47 @@ export default function MeetingsPage() {
                             <h2 className="text-xl font-black text-slate-900 dark:text-white">
                                 {modalMode === "create" ? "Schedule Meeting" : "Edit Meeting"}
                             </h2>
-                            <button onClick={() => setModalMode(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"><X size={20} /></button>
+                            <button onClick={() => setModalMode(null)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+                                <X size={20} />
+                            </button>
                         </div>
 
                         {msg && (
-                            <div className={`mb-4 p-3 rounded-xl flex items-center gap-2 text-sm font-medium ${msg.type === "success" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
+                            <div className={`mb-4 p-3 rounded-xl flex items-center gap-2 text-sm font-medium ${msg.type === "success"
+                                    ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                                    : "bg-red-500/10 border border-red-500/20 text-red-400"
+                                }`}>
                                 {msg.type === "success" ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />} {msg.text}
                             </div>
                         )}
 
                         <div className="space-y-4">
+                            {/* Title */}
                             <label className="block">
                                 <span className="label-xs">Title *</span>
-                                <input value={fTitle} onChange={e => setFTitle(e.target.value)} placeholder="e.g. Monthly Faculty Meeting"
-                                    className="field-input mt-1.5" />
+                                <input value={fTitle} onChange={e => setFTitle(e.target.value)}
+                                    placeholder="e.g. Monthly Faculty Meeting" className="field-input mt-1.5" />
                             </label>
 
+                            {/* Description */}
                             <label className="block">
                                 <span className="label-xs">Description</span>
-                                <textarea value={fDesc} onChange={e => setFDesc(e.target.value)} rows={2} placeholder="Optional agenda or notes..."
+                                <textarea value={fDesc} onChange={e => setFDesc(e.target.value)}
+                                    rows={2} placeholder="Brief purpose of the meeting..."
                                     className="field-input mt-1.5 resize-none" />
                             </label>
 
-                            {/* Meeting Type */}
+                            {/* Platform */}
                             <div>
                                 <span className="label-xs block mb-2">Platform</span>
                                 <div className="grid grid-cols-2 gap-2">
                                     {MEETING_TYPES.map(t => (
                                         <button key={t.value} type="button" onClick={() => setFType(t.value)}
-                                            className={`py-2 px-3 rounded-xl border text-sm font-semibold transition-all ${fType === t.value ? `${t.bg} ${t.color} border-current` : "border-border-dark text-slate-400 hover:text-white hover:border-slate-500"}`}>
+                                            className={`py-2 px-3 rounded-xl border text-sm font-semibold transition-all ${fType === t.value
+                                                    ? `${t.bg} ${t.color} border-current`
+                                                    : "border-border-dark text-slate-400 hover:text-white hover:border-slate-500"
+                                                }`}>
                                             {t.label}
                                         </button>
                                     ))}
@@ -308,43 +509,55 @@ export default function MeetingsPage() {
                                 <span className="label-xs">Meeting Link</span>
                                 <div className="relative mt-1.5">
                                     <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                                    <input value={fLink} onChange={e => setFLink(e.target.value)} placeholder="https://meet.google.com/..."
+                                    <input value={fLink} onChange={e => setFLink(e.target.value)}
+                                        placeholder="https://meet.google.com/..."
                                         className="field-input pl-9" />
                                 </div>
-                                <p className="text-xs text-slate-500 mt-1">Principal and the meeting faculty can edit this link anytime.</p>
+                                <p className="text-xs text-slate-500 mt-1">Principal and conducting faculty can edit this anytime.</p>
                             </label>
 
-                            {/* Date Range */}
+                            {/* Dates */}
                             <div className="grid grid-cols-2 gap-3">
                                 <label className="block">
                                     <span className="label-xs">Starts *</span>
-                                    <input type="datetime-local" value={fDate} onChange={e => setFDate(e.target.value)} className="field-input mt-1.5" />
+                                    <input type="datetime-local" value={fDate} onChange={e => setFDate(e.target.value)}
+                                        className="field-input mt-1.5" />
                                 </label>
                                 <label className="block">
                                     <span className="label-xs">Ends</span>
-                                    <input type="datetime-local" value={fEnds} onChange={e => setFEnds(e.target.value)} className="field-input mt-1.5" />
+                                    <input type="datetime-local" value={fEnds} onChange={e => setFEnds(e.target.value)}
+                                        className="field-input mt-1.5" />
                                 </label>
                             </div>
 
-                            {/* Created By Role */}
+                            {/* Conducted By + Role */}
                             <div className="grid grid-cols-2 gap-3">
                                 <label className="block">
-                                    <span className="label-xs">Scheduled By</span>
-                                    <select value={fRole} onChange={e => setFRole(e.target.value)} className="field-input mt-1.5 cursor-pointer">
+                                    <span className="label-xs">Conducted By (Name)</span>
+                                    <input value={fConductedBy} onChange={e => setFConductedBy(e.target.value)}
+                                        placeholder="e.g. Dr. Mehta" className="field-input mt-1.5" />
+                                </label>
+                                <label className="block">
+                                    <span className="label-xs">Scheduled By Role</span>
+                                    <select value={fRole} onChange={e => setFRole(e.target.value)}
+                                        className="field-input mt-1.5 cursor-pointer">
                                         <option value="principal">Principal</option>
                                         <option value="faculty">Faculty</option>
                                     </select>
                                 </label>
-                                <label className="block">
-                                    <span className="label-xs">Status</span>
-                                    <select value={fStatus} onChange={e => setFStatus(e.target.value)} className="field-input mt-1.5 cursor-pointer">
-                                        <option value="upcoming">Upcoming</option>
-                                        <option value="live">Live Now</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </select>
-                                </label>
                             </div>
+
+                            {/* Status */}
+                            <label className="block">
+                                <span className="label-xs">Status</span>
+                                <select value={fStatus} onChange={e => setFStatus(e.target.value)}
+                                    className="field-input mt-1.5 cursor-pointer">
+                                    <option value="upcoming">Upcoming</option>
+                                    <option value="live">Live Now</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </label>
 
                             {/* Invited Roles */}
                             <div>
@@ -352,15 +565,47 @@ export default function MeetingsPage() {
                                 <div className="flex gap-2">
                                     {["faculty", "students", "principal"].map(role => (
                                         <button key={role} type="button" onClick={() => toggleInvited(role)}
-                                            className={`flex-1 py-2 rounded-xl border text-xs font-semibold capitalize transition-all ${fInvited.includes(role) ? "bg-primary text-white border-primary" : "border-border-dark text-slate-400 hover:text-white"}`}>
+                                            className={`flex-1 py-2 rounded-xl border text-xs font-semibold capitalize transition-all ${fInvited.includes(role)
+                                                    ? "bg-primary text-white border-primary"
+                                                    : "border-border-dark text-slate-400 hover:text-white"
+                                                }`}>
                                             {role}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
+                            {/* Participants */}
+                            <label className="block">
+                                <span className="label-xs">Participants (comma-separated names)</span>
+                                <input value={fParticipants} onChange={e => setFParticipants(e.target.value)}
+                                    placeholder="e.g. Dr. Mehta, Prof. Sharma, Ms. Nair"
+                                    className="field-input mt-1.5" />
+                                <p className="text-xs text-slate-500 mt-1">Used for attendance marking</p>
+                            </label>
+
+                            {/* Agenda */}
+                            <label className="block">
+                                <span className="label-xs">Agenda</span>
+                                <textarea value={fAgenda} onChange={e => setFAgenda(e.target.value)} rows={3}
+                                    placeholder="1. Welcome&#10;2. Review last minutes&#10;3. Discuss attendance policy..."
+                                    className="field-input mt-1.5 resize-none" />
+                            </label>
+
+                            {/* Meeting Notes */}
+                            <label className="block">
+                                <span className="label-xs">Meeting Notes / Minutes</span>
+                                <textarea value={fNotes} onChange={e => setFNotes(e.target.value)} rows={2}
+                                    placeholder="Key decisions, action items..."
+                                    className="field-input mt-1.5 resize-none" />
+                            </label>
+
+                            {/* Actions */}
                             <div className="flex gap-3 pt-2">
-                                <button onClick={() => setModalMode(null)} className="flex-1 py-3 border border-border-dark text-slate-400 hover:text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition-colors">Cancel</button>
+                                <button onClick={() => setModalMode(null)}
+                                    className="flex-1 py-3 border border-border-dark text-slate-400 hover:text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition-colors">
+                                    Cancel
+                                </button>
                                 <button onClick={handleSave} disabled={saving}
                                     className="flex-1 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50">
                                     {saving ? <Loader2 size={15} className="animate-spin" /> : null}
@@ -376,11 +621,16 @@ export default function MeetingsPage() {
             {deletingId && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-surface-light dark:bg-surface-dark border border-red-500/30 rounded-2xl w-full max-w-sm p-6 text-center shadow-2xl">
-                        <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4"><Trash2 className="text-red-400" size={22} /></div>
+                        <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                            <Trash2 className="text-red-400" size={22} />
+                        </div>
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Delete Meeting?</h3>
-                        <p className="text-slate-400 text-sm mb-6">This will permanently remove this meeting and its link.</p>
+                        <p className="text-slate-400 text-sm mb-6">This will permanently remove this meeting and its data.</p>
                         <div className="flex gap-3">
-                            <button onClick={() => setDeletingId(null)} className="flex-1 py-2.5 rounded-xl border border-border-dark text-slate-400 hover:text-white hover:bg-slate-800 text-sm font-semibold transition-colors">Cancel</button>
+                            <button onClick={() => setDeletingId(null)}
+                                className="flex-1 py-2.5 rounded-xl border border-border-dark text-slate-400 hover:text-white hover:bg-slate-800 text-sm font-semibold transition-colors">
+                                Cancel
+                            </button>
                             <button onClick={() => handleDelete(deletingId)} disabled={deleting}
                                 className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50">
                                 {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}

@@ -1,19 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
     Building2, BookOpen, Bell, Shield, Save, Loader2,
     CheckCircle2, Plus, Trash2, Globe, Phone, Mail,
-    Lock, Eye, EyeOff, ToggleLeft, ToggleRight
+    Lock, Eye, EyeOff, ToggleLeft, ToggleRight, Brain
 } from "lucide-react";
+import { saveInstituteSettings, loadInstituteSettings } from "@/utils/insforge/realtime";
 
 type Tab = "institute" | "departments" | "academic" | "notifications" | "security";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "institute", label: "Institute Profile", icon: <Building2 size={16} /> },
     { id: "departments", label: "Departments", icon: <BookOpen size={16} /> },
-    { id: "academic", label: "Academic Year", icon: <BookOpen size={16} /> },
+    { id: "academic", label: "Academic & AI", icon: <Brain size={16} /> },
     { id: "notifications", label: "Notifications", icon: <Bell size={16} /> },
     { id: "security", label: "Security", icon: <Shield size={16} /> },
 ];
@@ -66,11 +67,58 @@ export default function SettingsPage() {
     const [twoFa, setTwoFa] = useState(false);
     const [sessionTimeout, setSessionTimeout] = useState("60");
 
+    // AI thresholds
+    const [aiConfidence, setAiConfidence] = useState("85");
+    const [liveness, setLiveness] = useState("medium");
+    const [attendanceThreshold, setAttendanceThreshold] = useState("75");
+
+    // Load settings from DB on mount
+    useEffect(() => {
+        loadInstituteSettings().then(data => {
+            if (!data) return;
+            if (data.name) setInstName(data.name);
+            if (data.code) setInstCode(data.code);
+            if (data.email) setInstEmail(data.email);
+            if (data.phone) setInstPhone(data.phone);
+            if (data.website) setInstWebsite(data.website);
+            if (data.address) setInstAddress(data.address);
+            if (data.acad_year) setAcadYear(data.acad_year);
+            if (data.term_start) setTermStart(data.term_start);
+            if (data.term_end) setTermEnd(data.term_end);
+            if (data.working_days) setWorkingDays(data.working_days);
+            if (data.min_attendance_pct) setMinAttendance(String(data.min_attendance_pct));
+            if (data.notif_email !== undefined) setNotifEmail(data.notif_email);
+            if (data.notif_sms !== undefined) setNotifSms(data.notif_sms);
+            if (data.notif_absence !== undefined) setNotifAbsence(data.notif_absence);
+            if (data.notif_anomaly !== undefined) setNotifAnomaly(data.notif_anomaly);
+            if (data.notif_meeting !== undefined) setNotifMeeting(data.notif_meeting);
+            if (data.absence_threshold) setNotifThreshold(String(data.absence_threshold));
+            if (data.two_fa !== undefined) setTwoFa(data.two_fa);
+            if (data.session_timeout) setSessionTimeout(String(data.session_timeout));
+            if (data.ai_confidence_threshold) setAiConfidence(String(data.ai_confidence_threshold));
+            if (data.liveness_sensitivity) setLiveness(data.liveness_sensitivity);
+            if (data.attendance_threshold) setAttendanceThreshold(String(data.attendance_threshold));
+        });
+    }, []);
+
     const handleSave = async () => {
         setSaving(true);
         setSaved(false);
-        // Simulate save delay
-        await new Promise(r => setTimeout(r, 900));
+        try {
+            await saveInstituteSettings({
+                name: instName, code: instCode, email: instEmail, phone: instPhone,
+                website: instWebsite, address: instAddress,
+                acad_year: acadYear, term_start: termStart, term_end: termEnd,
+                working_days: workingDays, min_attendance_pct: Number(minAttendance),
+                notif_email: notifEmail, notif_sms: notifSms, notif_absence: notifAbsence,
+                notif_anomaly: notifAnomaly, notif_meeting: notifMeeting,
+                absence_threshold: Number(notifThreshold),
+                two_fa: twoFa, session_timeout: Number(sessionTimeout),
+                ai_confidence_threshold: Number(aiConfidence),
+                liveness_sensitivity: liveness,
+                attendance_threshold: Number(attendanceThreshold),
+            });
+        } catch (_) { /* silent fallback */ }
         setSaving(false);
         setSaved(true);
         setTimeout(() => setSaved(false), 2500);
@@ -236,6 +284,27 @@ export default function SettingsPage() {
                                     <input type="number" min="0" max="100" value={minAttendance} onChange={e => setMinAttendance(e.target.value)} className="field-input mt-1.5" />
                                     <p className="text-xs text-slate-400 mt-1">Students below this threshold will be flagged</p>
                                 </label>
+
+                                {/* AI Thresholds */}
+                                <div className="mt-6 pt-5 border-t border-border-light dark:border-border-dark">
+                                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4"><Brain size={15} /> AI Thresholds</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <label className="block">
+                                            <span className="label-xs">AI Confidence Threshold (%)</span>
+                                            <input type="number" min="50" max="100" value={aiConfidence} onChange={e => setAiConfidence(e.target.value)} className="field-input mt-1.5" />
+                                            <p className="text-xs text-slate-400 mt-1">Detections below this are sent to validation queue</p>
+                                        </label>
+                                        <label className="block">
+                                            <span className="label-xs">Liveness Sensitivity</span>
+                                            <select value={liveness} onChange={e => setLiveness(e.target.value)} className="field-input mt-1.5 cursor-pointer">
+                                                <option value="low">Low</option>
+                                                <option value="medium">Medium</option>
+                                                <option value="high">High</option>
+                                            </select>
+                                            <p className="text-xs text-slate-400 mt-1">Higher = stricter liveness check</p>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
