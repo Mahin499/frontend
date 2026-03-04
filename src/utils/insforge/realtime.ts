@@ -12,14 +12,19 @@ export function useStudentCount() {
         (client as any).database.from("students").select("id", { count: "exact", head: true })
             .then(({ count: c }: any) => setCount(c ?? 0));
         // Real-time subscription
-        const sub = (client as any).realtime
-            ?.channel("students-count")
-            ?.on("postgres_changes", { event: "*", schema: "public", table: "students" }, () => {
+        const rt = (client as any).realtime;
+        if (rt) {
+            rt.connect?.();
+            rt.subscribe?.("students-count");
+            const handler = () => {
                 (client as any).database.from("students").select("id", { count: "exact", head: true })
                     .then(({ count: c }: any) => setCount(c ?? 0));
-            })
-            ?.subscribe();
-        return () => { sub?.unsubscribe?.(); };
+            };
+            // Listen for a custom event or generic fallback
+            rt.on?.("update", handler);
+            return () => { rt.unsubscribe?.("students-count"); rt.off?.("update", handler); };
+        }
+        return () => { };
     }, []);
     return count;
 }
@@ -32,15 +37,19 @@ export function useFacultyCount() {
         (client as any).database.from("faculty_approvals").select("id", { count: "exact", head: true })
             .eq("status", "approved")
             .then(({ count: c }: any) => setCount(c ?? 0));
-        const sub = (client as any).realtime
-            ?.channel("faculty-count")
-            ?.on("postgres_changes", { event: "*", schema: "public", table: "faculty_approvals" }, () => {
+        const rt = (client as any).realtime;
+        if (rt) {
+            rt.connect?.();
+            rt.subscribe?.("faculty-count");
+            const handler = () => {
                 (client as any).database.from("faculty_approvals").select("id", { count: "exact", head: true })
                     .eq("status", "approved")
                     .then(({ count: c }: any) => setCount(c ?? 0));
-            })
-            ?.subscribe();
-        return () => { sub?.unsubscribe?.(); };
+            };
+            rt.on?.("update", handler);
+            return () => { rt.unsubscribe?.("faculty-count"); rt.off?.("update", handler); };
+        }
+        return () => { };
     }, []);
     return count;
 }
@@ -55,11 +64,14 @@ export function usePendingApprovals() {
                 .eq("status", "pending")
                 .then(({ count: c }: any) => setCount(c ?? 0));
         fetch();
-        const sub = (client as any).realtime
-            ?.channel("approvals-pending")
-            ?.on("postgres_changes", { event: "*", schema: "public", table: "faculty_approvals" }, fetch)
-            ?.subscribe();
-        return () => { sub?.unsubscribe?.(); };
+        const rt = (client as any).realtime;
+        if (rt) {
+            rt.connect?.();
+            rt.subscribe?.("approvals-pending");
+            rt.on?.("update", fetch);
+            return () => { rt.unsubscribe?.("approvals-pending"); rt.off?.("update", fetch); };
+        }
+        return () => { };
     }, []);
     return count;
 }
