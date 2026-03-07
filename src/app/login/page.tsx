@@ -139,8 +139,8 @@ export default function LoginPage() {
                             <span className="font-black text-lg tracking-tight text-white">SmartAI<span className="text-blue-400"> Attendance</span></span>
                         </Link>
                         <div className="hidden md:flex items-center gap-6">
-                            <Link className="text-sm font-medium text-slate-400 hover:text-white transition-colors" href="#">How it works</Link>
-                            <Link className="text-sm font-medium text-slate-400 hover:text-white transition-colors" href="#">Security</Link>
+                            <a className="text-sm font-medium text-slate-400 hover:text-white transition-colors" href="#how-it-works">How it works</a>
+                            <a className="text-sm font-medium text-slate-400 hover:text-white transition-colors" href="#security">Security</a>
                             <Link href="/register" className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 transition-all shadow-lg shadow-blue-500/20">
                                 Register Institute
                             </Link>
@@ -150,8 +150,8 @@ export default function LoginPage() {
             </nav>
 
             {/* Main */}
-            <main className="relative z-10 flex-grow flex items-center justify-center p-4 py-12">
-                <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-12 items-center">
+            <main className="relative z-10 flex-grow flex flex-col items-center justify-start p-4 py-12 xl:py-20">
+                <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-12 items-center mb-32 min-h-[calc(100vh-200px)]">
 
                     {/* LEFT: Role-Specific Hero Content */}
                     <div className="hidden lg:flex flex-col justify-center space-y-8">
@@ -398,6 +398,53 @@ export default function LoginPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* HOW IT WORKS SECTION */}
+                <section id="how-it-works" className="w-full max-w-4xl text-left mb-32 pt-16 scroll-mt-20">
+                    <h2 className="text-3xl lg:text-4xl font-black text-white mb-6">How SmartAI Attendance Works</h2>
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl backdrop-blur-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-blue-500/10 blur-3xl pointer-events-none rounded-full" />
+                        <p className="text-slate-300 text-lg leading-relaxed mb-6 font-medium relative z-10">
+                            SmartAI Attendance uses AI-powered face recognition to automatically detect and record student attendance in real time. Cameras capture classroom images and the AI model identifies registered students.
+                        </p>
+                        <p className="text-slate-400 text-lg leading-relaxed mb-6 relative z-10">
+                            The system also detects student behavior and classroom engagement such as:
+                        </p>
+                        <ul className="text-slate-300 mb-8 space-y-3 relative z-10">
+                            <li className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-blue-500" /> Sleep detection</li>
+                            <li className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-blue-500" /> Confidence level</li>
+                            <li className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-blue-500" /> Attendance anomalies</li>
+                            <li className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-blue-500" /> Classroom analytics</li>
+                        </ul>
+                        <p className="text-slate-400 text-lg leading-relaxed relative z-10">
+                            Faculty and principals receive detailed reports and analytics for better academic monitoring.
+                        </p>
+                    </div>
+                </section>
+
+                {/* SECURITY SECTION */}
+                <section id="security" className="w-full max-w-4xl text-left mb-24 pt-16 scroll-mt-20">
+                    <h2 className="text-3xl lg:text-4xl font-black text-white mb-6">Security & Privacy</h2>
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl backdrop-blur-sm relative overflow-hidden group">
+                        <div className="absolute top-0 left-0 w-[40%] h-[40%] bg-violet-500/10 blur-3xl pointer-events-none rounded-full" />
+                        <p className="text-slate-300 text-lg leading-relaxed mb-6 font-medium relative z-10">
+                            SmartAI Attendance is designed with enterprise-level security to protect institutional data and user privacy.
+                        </p>
+                        <p className="text-slate-400 text-lg leading-relaxed mb-6 relative z-10">
+                            Security features include:
+                        </p>
+                        <ul className="text-slate-300 mb-8 space-y-3 relative z-10">
+                            <li className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-violet-500" /> Secure authentication using JWT</li>
+                            <li className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-violet-500" /> Role-based access control</li>
+                            <li className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-violet-500" /> Encrypted data transmission</li>
+                            <li className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-violet-500" /> Gemini AI validation for anomaly detection</li>
+                            <li className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-violet-500" /> Institute-level permission management</li>
+                        </ul>
+                        <p className="text-slate-400 text-lg leading-relaxed relative z-10">
+                            The system ensures secure and reliable access for principals, faculty, and administrators.
+                        </p>
+                    </div>
+                </section>
             </main>
 
             <footer className="relative z-10 py-6 text-center border-t border-white/5">
