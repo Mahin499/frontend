@@ -1,115 +1,90 @@
 import Link from "next/link";
-import {
-  LogIn,
-  UserPlus,
-  Unlock,
-  ShieldCheck,
-  School,
-  Video,
-  Cpu,
-  Users,
-  BookOpen,
-  CalendarDays,
-  Clock,
-  CalendarRange
-} from "lucide-react";
+import { LogIn, Cpu } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="relative z-10 max-w-7xl mx-auto px-6 py-16">
+    <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
 
-      {/* Top Nav */}
-      <nav className="flex justify-between items-center mb-16">
+      {/* 1. Header */}
+      <nav className="flex flex-col md:flex-row justify-between items-center mb-24 gap-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-            <span className="material-symbols-outlined text-primary text-xl">face</span>
+          <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
+            <span className="material-symbols-outlined text-blue-500 text-xl">face</span>
           </div>
           <div>
-            <span className="font-black text-lg text-white">SmartAI Attendance</span>
-            <span className="ml-2 text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/20 font-semibold">
-              LIVE SYSTEM
-            </span>
+            <span className="font-black text-xl text-white tracking-tight">SmartAI Attendance</span>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <Link href="/login" className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold transition-all shadow-lg shadow-primary/25 text-sm">
+        <div className="flex flex-wrap items-center justify-center gap-8">
+          <a href="#about" className="text-sm font-semibold text-slate-300 hover:text-white transition-colors">About</a>
+          <a href="#vision" className="text-sm font-semibold text-slate-300 hover:text-white transition-colors">Vision</a>
+          <a href="#mission" className="text-sm font-semibold text-slate-300 hover:text-white transition-colors">Mission</a>
+          <Link href="/login" className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-500/25 text-sm ml-2">
             <LogIn size={18} /> Sign In
-          </Link>
-          <Link href="/dashboard" className="text-sm font-semibold text-slate-300 hover:text-white transition-colors">
-            Go to Dashboard
           </Link>
         </div>
       </nav>
 
-      {/* Hero */}
-      <div className="text-center mb-16">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-6">
+      {/* 2. Hero Section */}
+      <section className="text-center mb-32 pt-8">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-widest mb-8">
           <Cpu size={14} />
           Powered by Gemini AI • OpenCV • face_recognition
         </div>
-        <h1 className="text-5xl md:text-7xl font-black leading-none mb-6">
-          <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">Smart AI</span><br />
+        <h1 className="text-5xl md:text-7xl font-black leading-tight mb-8">
+          <span className="bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">Smart AI</span><br />
           <span className="text-white">Attendance System</span>
         </h1>
-        <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
-          Production-ready attendance platform with AI face recognition, sleep detection, Gemini validation,
-          role-based access, and advanced analytics.
+        <p className="text-slate-400 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
+          AI-powered attendance platform with face recognition, sleep detection, classroom analytics, and intelligent validation.
         </p>
-      </div>
+      </section>
 
-      {/* Navigation Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <NavCard href="/login" icon={<LogIn className="text-primary" />} title="Login" desc="Secure JWT auth with Principal / Faculty role toggle." color="primary" />
-        <NavCard href="/register" icon={<UserPlus className="text-emerald-400" />} title="Register" desc="Principal & Faculty registration with institute creation." color="emerald" />
-        <NavCard href="/forgot-password" icon={<Unlock className="text-slate-300" />} title="Reset Password" desc="Secure multi-step password reset flow." color="slate" />
-        <NavCard href="/dashboard" icon={<ShieldCheck className="text-primary" />} title="Principal Dashboard" desc="Institute-wide stats and anomaly alerts." color="primary" badge="PRINCIPAL" />
-        <NavCard href="/faculty" icon={<School className="text-violet-400" />} title="Faculty Dashboard" desc="Class-specific attendance and sleep analytics." color="violet" badge="FACULTY" />
-        <NavCard href="/live-session" icon={<Video className="text-red-400" />} title="Live AI Session" desc="Real-time face detection with 98%+ confidence." color="red" badge="LIVE" />
-        <NavCard href="/ai-validation" icon={<Cpu className="text-indigo-400" />} title="AI Validation Queue" desc="Review flagged anomalies via Gemini AI." color="indigo" badge="GEMINI AI" />
-        <NavCard href="/students" icon={<Users className="text-teal-400" />} title="Student Management" desc="Enroll via CSV & ZIP bulk upload." color="teal" />
-        <NavCard href="/classes" icon={<BookOpen className="text-amber-400" />} title="Class Management" desc="Create classes and view per-class stats." color="amber" />
-        <NavCard href="/reports/whole-day" icon={<CalendarDays className="text-green-400" />} title="Whole-Day Report" desc="Full day log with export options." color="green" />
-        <NavCard href="/reports/period-wise" icon={<Clock className="text-orange-400" />} title="Period-Wise Report" desc="Confidence scores and sleep detection data." color="orange" />
-        <NavCard href="/reports/monthly" icon={<CalendarRange className="text-pink-400" />} title="Monthly Report" desc="Institute-wide monthly analytics." color="pink" />
-      </div>
+      {/* 3. About Section */}
+      <section id="about" className="mb-32 max-w-4xl mx-auto text-center scroll-mt-24">
+        <h2 className="text-3xl lg:text-4xl font-black text-white mb-8">About the System</h2>
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl backdrop-blur-sm relative overflow-hidden">
+          {/* Subtle glow effect */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-blue-500/5 blur-3xl pointer-events-none rounded-full" />
+
+          <p className="text-slate-300 text-lg md:text-xl leading-relaxed mb-6 font-medium relative z-10">
+            SmartAI Attendance is an AI-powered classroom monitoring system that automatically records student attendance using face recognition technology. The system also analyzes student alertness and classroom engagement using computer vision and machine learning.
+          </p>
+          <p className="text-slate-400 text-lg md:text-xl leading-relaxed relative z-10">
+            It provides real-time insights for faculty and advanced analytics for institutional management.
+          </p>
+        </div>
+      </section>
+
+      {/* 4. Vision Section */}
+      <section id="vision" className="mb-32 max-w-4xl mx-auto text-center scroll-mt-24">
+        <h2 className="text-3xl lg:text-4xl font-black text-white mb-8">Our Vision</h2>
+        <div className="bg-gradient-to-br from-blue-900/20 to-violet-900/10 border border-blue-500/20 rounded-3xl p-8 md:p-12 shadow-2xl backdrop-blur-sm relative overflow-hidden group">
+          <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+          <p className="text-blue-100 text-lg md:text-xl leading-relaxed font-medium relative z-10">
+            To create intelligent classrooms where artificial intelligence improves transparency, engagement, and academic performance through automated monitoring and analytics.
+          </p>
+        </div>
+      </section>
+
+      {/* 5. Mission Section */}
+      <section id="mission" className="mb-32 max-w-4xl mx-auto text-center scroll-mt-24">
+        <h2 className="text-3xl lg:text-4xl font-black text-white mb-8">Our Mission</h2>
+        <div className="bg-gradient-to-br from-violet-900/20 to-pink-900/10 border border-violet-500/20 rounded-3xl p-8 md:p-12 shadow-2xl backdrop-blur-sm relative overflow-hidden group">
+          <div className="absolute inset-0 bg-violet-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+          <p className="text-violet-100 text-lg md:text-xl leading-relaxed font-medium relative z-10">
+            To simplify classroom management using AI technologies that automate attendance, monitor student engagement, and provide meaningful insights for educators and institutions.
+          </p>
+        </div>
+      </section>
+
+      {/* 6. Footer */}
+      <footer className="border-t border-white/10 pt-10 pb-6 text-center">
+        <p className="text-slate-500 text-sm font-medium">
+          © 2026 SmartAI Attendance System.
+        </p>
+      </footer>
 
     </div>
-  );
-}
-
-function NavCard({ href, icon, title, desc, color, badge }: any) {
-  const colorMap: Record<string, string> = {
-    primary: "border-primary/30 bg-primary/20 hover:border-primary/40 text-primary",
-    emerald: "border-emerald-500/30 bg-emerald-500/20 hover:border-emerald-500/40 text-emerald-400",
-    slate: "border-slate-600 bg-slate-700/50 hover:border-slate-500 text-slate-300",
-    violet: "border-violet-500/30 bg-violet-500/20 hover:border-violet-500/40 text-violet-400",
-    red: "border-red-500/30 bg-red-500/20 hover:border-red-500/40 text-red-400",
-    indigo: "border-indigo-500/30 bg-indigo-500/20 hover:border-indigo-500/40 text-indigo-400",
-    teal: "border-teal-500/30 bg-teal-500/20 hover:border-teal-500/40 text-teal-400",
-    amber: "border-amber-500/30 bg-amber-500/20 hover:border-amber-500/40 text-amber-400",
-    green: "border-green-500/30 bg-green-500/20 hover:border-green-500/40 text-green-400",
-    orange: "border-orange-500/30 bg-orange-500/20 hover:border-orange-500/40 text-orange-400",
-    pink: "border-pink-500/30 bg-pink-500/20 hover:border-pink-500/40 text-pink-400",
-  };
-
-  return (
-    <Link href={href} className={`group relative p-6 rounded-2xl border border-slate-800 bg-[#111418] block transition-all hover:-translate-y-1 hover:shadow-xl`}>
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 border transition-transform group-hover:scale-110 ${colorMap[color]}`}>
-        {icon}
-      </div>
-      <h3 className="font-bold text-white text-lg mb-1">{title}</h3>
-      <p className="text-slate-400 text-sm leading-relaxed mb-4">{desc}</p>
-
-      <div className="mt-auto flex items-center justify-between text-xs font-semibold">
-        {badge && (
-          <span className={`px-2 py-0.5 rounded bg-surface-dark border border-border-dark ${colorMap[color].split(' ')[4]}`}>
-            {badge}
-          </span>
-        )}
-        <span className={`flex items-center gap-1 ${colorMap[color].split(' ')[4]}`}>
-          Open Page <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-        </span>
-      </div>
-    </Link>
   );
 }
