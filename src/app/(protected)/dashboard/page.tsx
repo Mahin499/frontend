@@ -18,13 +18,6 @@ import {
 } from "lucide-react";
 import { useStudentCount, useFacultyCount, usePendingApprovals } from "@/utils/insforge/realtime";
 import { useState } from "react";
-import dynamic from "next/dynamic";
-import { RobotState } from "@/components/SplineRobot";
-
-// Dynamically import SplineRobot to prevent SSR issues and avoid blocking main bundle load
-const SplineRobot = dynamic(() => import("@/components/SplineRobot"), {
-    ssr: false,
-});
 
 export default function DashboardPage() {
     const studentCount = useStudentCount();
@@ -33,17 +26,6 @@ export default function DashboardPage() {
 
     // Modal State for Event Details
     const [showEventModal, setShowEventModal] = useState(false);
-
-    // Robot State
-    const [robotState, setRobotState] = useState<RobotState>("idle");
-    const [isRobotMinimized, setIsRobotMinimized] = useState(false);
-
-    // Mock event handler to trigger robot states
-    const triggerRobotEvent = (state: RobotState) => {
-        setRobotState(state);
-        // Reset to idle after 4 seconds
-        setTimeout(() => setRobotState("idle"), 4000);
-    };
 
     return (
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 w-full min-w-0">
@@ -314,44 +296,6 @@ export default function DashboardPage() {
                             </button>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            {/* AI Assistant Robot Integration */}
-            <div
-                className={`fixed bottom-6 right-6 z-50 transition-all duration-500 ease-in-out flex flex-col items-end ${isRobotMinimized ? "translate-y-[180px]" : "translate-y-0"}`}
-            >
-                {/* Robot Controls / Tooltip */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-3 mb-4 max-w-[250px] transition-opacity opacity-100 hover:opacity-100 group-hover:opacity-100 hidden md:block">
-                    <div className="flex justify-between items-center mb-2">
-                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200">AI Assistant</p>
-                        <button
-                            onClick={() => setIsRobotMinimized(!isRobotMinimized)}
-                            className="text-slate-400 hover:text-primary transition-colors focus:outline-none"
-                        >
-                            {isRobotMinimized ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                            ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="12" x2="6" y2="12"></line></svg>
-                            )}
-                        </button>
-                    </div>
-                    {!isRobotMinimized && (
-                        <div className="space-y-2">
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Trigger test events:</p>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => triggerRobotEvent("attendance")} className="text-[10px] bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-1 px-2 rounded font-medium transition-colors">Mark Attend</button>
-                                <button onClick={() => triggerRobotEvent("happy")} className="text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-200 py-1 px-2 rounded font-medium transition-colors">Student In</button>
-                                <button onClick={() => triggerRobotEvent("alert")} className="text-[10px] bg-amber-100 text-amber-700 hover:bg-amber-200 py-1 px-2 rounded font-medium transition-colors">Drowsy</button>
-                                <button onClick={() => triggerRobotEvent("warning")} className="text-[10px] bg-red-100 text-red-700 hover:bg-red-200 py-1 px-2 rounded font-medium transition-colors">Unknown</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* The Robot Itself */}
-                <div className="w-[200px] h-[200px] relative w-full h-full lg:w-[250px] lg:h-[250px] rounded-full drop-shadow-2xl">
-                    <SplineRobot robotState={robotState} />
                 </div>
             </div>
 

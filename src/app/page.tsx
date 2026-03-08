@@ -1,5 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { LogIn, Cpu } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const SplineRobot = dynamic(() => import("@/components/SplineRobot"), {
+  ssr: false,
+});
 
 export default function Home() {
   return (
@@ -26,18 +33,31 @@ export default function Home() {
       </nav>
 
       {/* 2. Hero Section */}
-      <section className="text-center mb-32 pt-8">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-widest mb-8">
-          <Cpu size={14} />
-          Powered by Gemini AI • OpenCV • face_recognition
+      <section className="text-center mb-32 pt-8 flex flex-col md:flex-row items-center justify-between gap-12">
+        <div className="flex-1 text-left md:text-center lg:text-left flex flex-col items-center lg:items-start z-20">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-widest mb-8">
+            <Cpu size={14} />
+            Powered by Gemini AI • OpenCV • face_recognition
+          </div>
+          <h1 className="text-5xl md:text-7xl font-black leading-tight mb-8">
+            <span className="bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">Smart AI</span><br />
+            <span className="text-white">Attendance System</span>
+          </h1>
+          <p className="text-slate-400 text-lg md:text-xl max-w-2xl leading-relaxed mb-8">
+            AI-powered attendance platform with face recognition, sleep detection, classroom analytics, and intelligent validation.
+          </p>
+          <Link href="/login" className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white rounded-xl font-bold transition-all shadow-xl shadow-blue-500/25 text-lg">
+            Get Started
+          </Link>
         </div>
-        <h1 className="text-5xl md:text-7xl font-black leading-tight mb-8">
-          <span className="bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">Smart AI</span><br />
-          <span className="text-white">Attendance System</span>
-        </h1>
-        <p className="text-slate-400 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
-          AI-powered attendance platform with face recognition, sleep detection, classroom analytics, and intelligent validation.
-        </p>
+
+        <div className="flex-1 w-full h-[400px] md:h-[500px] lg:h-[600px] relative flex justify-center items-center z-10 pointer-events-none md:pointer-events-auto">
+          {/* Soft backdrop glow to make robot pop against dark background */}
+          <div className="absolute inset-0 bg-blue-600/10 blur-[100px] rounded-full z-0" />
+          <div className="w-full h-full relative z-10 scale-[1.2] md:scale-100 flex items-center justify-center">
+            <SplineRobot robotState="idle" className="w-full h-full min-w-[300px]" />
+          </div>
+        </div>
       </section>
 
       {/* 3. About Section */}
