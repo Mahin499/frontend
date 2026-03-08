@@ -32,30 +32,48 @@ export default function Home() {
         </div>
       </nav>
 
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .hide-spline-watermark a {
+            display: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        @keyframes float-hero {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        .animate-float-hero {
+            animation: float-hero 6s ease-in-out infinite;
+        }
+      `}} />
+
       {/* 2. Hero Section */}
-      <section className="text-center mb-32 pt-8 flex flex-col md:flex-row items-center justify-between gap-12">
-        <div className="flex-1 text-left md:text-center lg:text-left flex flex-col items-center lg:items-start z-20">
+      <section className="text-center mb-32 pt-8 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-8 min-h-[60vh]">
+        <div className="w-full lg:w-[50%] text-left md:text-center lg:text-left flex flex-col items-center lg:items-start z-20">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-widest mb-8">
             <Cpu size={14} />
             Powered by Gemini AI • OpenCV • face_recognition
           </div>
-          <h1 className="text-5xl md:text-7xl font-black leading-tight mb-8">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-8">
             <span className="bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">Smart AI</span><br />
             <span className="text-white">Attendance System</span>
           </h1>
           <p className="text-slate-400 text-lg md:text-xl max-w-2xl leading-relaxed mb-8">
             AI-powered attendance platform with face recognition, sleep detection, classroom analytics, and intelligent validation.
           </p>
-          <Link href="/login" className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white rounded-xl font-bold transition-all shadow-xl shadow-blue-500/25 text-lg">
+          <Link href="/login" className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white rounded-xl font-bold transition-all shadow-xl shadow-blue-500/25 text-lg cursor-pointer z-50">
             Get Started
           </Link>
         </div>
 
-        <div className="flex-1 w-full h-[400px] md:h-[500px] lg:h-[600px] relative flex justify-center items-center z-10 pointer-events-none md:pointer-events-auto">
+        <div className="w-full lg:w-[50%] h-[400px] md:h-[500px] lg:h-[700px] relative flex justify-center items-center z-10 pointer-events-auto hide-spline-watermark animate-float-hero">
           {/* Soft backdrop glow to make robot pop against dark background */}
-          <div className="absolute inset-0 bg-blue-600/10 blur-[100px] rounded-full z-0" />
-          <div className="w-full h-full relative z-10 scale-[1.2] md:scale-100 flex items-center justify-center">
-            <SplineRobot robotState="idle" className="w-full h-full min-w-[300px]" />
+          <div className="absolute inset-0 bg-blue-600/20 blur-[120px] rounded-full z-0 w-[80%] h-[80%] m-auto" />
+
+          {/* Spline container with increased scale */}
+          <div className="w-full h-full relative z-10 scale-[1.3] md:scale-[1.6] lg:scale-[2] xl:scale-[2.2] flex items-center justify-center -mt-8 md:-mt-12 lg:mt-0">
+            <SplineRobot robotState="idle" className="w-full h-full drop-shadow-2xl" />
           </div>
         </div>
       </section>
