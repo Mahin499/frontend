@@ -3,18 +3,27 @@
 import Link from "next/link";
 import { LogIn, Cpu } from "lucide-react";
 import dynamic from "next/dynamic";
+import { MouseEvent } from "react";
 
 const SplineRobot = dynamic(() => import("@/components/SplineRobot"), {
   ssr: false,
 });
 
 export default function Home() {
+  const scrollToSection = (e: MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
-    <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
+    <div className="relative z-10 max-w-7xl mx-auto px-6 py-8 overflow-hidden">
 
       {/* 1. Header */}
-      <nav className="flex flex-col md:flex-row justify-between items-center mb-24 gap-6">
-        <div className="flex items-center gap-3">
+      <nav className="flex flex-col md:flex-row justify-between items-center mb-16 lg:mb-24 gap-6">
+        <div className="flex items-center gap-3 z-30">
           <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
             <span className="material-symbols-outlined text-blue-500 text-xl">face</span>
           </div>
@@ -22,10 +31,10 @@ export default function Home() {
             <span className="font-black text-xl text-white tracking-tight">SmartAI Attendance</span>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-8">
-          <a href="#about" className="text-sm font-semibold text-slate-300 hover:text-white transition-colors">About</a>
-          <a href="#vision" className="text-sm font-semibold text-slate-300 hover:text-white transition-colors">Vision</a>
-          <a href="#mission" className="text-sm font-semibold text-slate-300 hover:text-white transition-colors">Mission</a>
+        <div className="flex flex-wrap items-center justify-center gap-8 z-30">
+          <a href="#about" onClick={(e) => scrollToSection(e, 'about')} className="text-sm font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer">About</a>
+          <a href="#vision" onClick={(e) => scrollToSection(e, 'vision')} className="text-sm font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer">Vision</a>
+          <a href="#mission" onClick={(e) => scrollToSection(e, 'mission')} className="text-sm font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer">Mission</a>
           <Link href="/login" className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-500/25 text-sm ml-2">
             <LogIn size={18} /> Sign In
           </Link>
@@ -34,14 +43,24 @@ export default function Home() {
 
       <style dangerouslySetInnerHTML={{
         __html: `
-        .hide-spline-watermark a {
+        .spline-watermark,
+        a[href*="spline.design"],
+        #logo-container,
+        #logo {
             display: none !important;
             opacity: 0 !important;
             pointer-events: none !important;
+            visibility: hidden !important;
         }
+        
+        /* Deep un-branded clipping as fallback */
+        .spline-wrapper {
+            clip-path: inset(0px 0px 30px 0px);
+        }
+
         @keyframes float-hero {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
+            0%, 100% { transform: translate(-50%, -50%); }
+            50% { transform: translate(-50%, calc(-50% - 20px)); }
         }
         .animate-float-hero {
             animation: float-hero 6s ease-in-out infinite;
@@ -49,31 +68,34 @@ export default function Home() {
       `}} />
 
       {/* 2. Hero Section */}
-      <section className="text-center mb-32 pt-8 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-8 min-h-[60vh]">
-        <div className="w-full lg:w-[50%] text-left md:text-center lg:text-left flex flex-col items-center lg:items-start z-20">
+      <section className="text-center mb-32 pt-4 lg:pt-8 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-8 min-h-[60vh] relative z-20">
+
+        {/* Left Side: Text Content */}
+        <div className="w-full lg:w-[50%] text-left md:text-center lg:text-left flex flex-col items-center lg:items-start z-30 relative">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-widest mb-8">
             <Cpu size={14} />
             Powered by Gemini AI • OpenCV • face_recognition
           </div>
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-black leading-tight mb-8">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black leading-tight mb-8">
             <span className="bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">Smart AI</span><br />
             <span className="text-white">Attendance System</span>
           </h1>
           <p className="text-slate-400 text-lg md:text-xl max-w-2xl leading-relaxed mb-8">
             AI-powered attendance platform with face recognition, sleep detection, classroom analytics, and intelligent validation.
           </p>
-          <Link href="/login" className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white rounded-xl font-bold transition-all shadow-xl shadow-blue-500/25 text-lg cursor-pointer z-50">
+          <Link href="/login" className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white rounded-xl font-bold transition-all shadow-xl shadow-blue-500/25 text-lg cursor-pointer">
             Get Started
           </Link>
         </div>
 
-        <div className="w-full lg:w-[50%] h-[400px] md:h-[500px] lg:h-[700px] relative flex justify-center items-center z-10 pointer-events-auto hide-spline-watermark animate-float-hero">
-          {/* Soft backdrop glow to make robot pop against dark background */}
-          <div className="absolute inset-0 bg-blue-600/20 blur-[120px] rounded-full z-0 w-[80%] h-[80%] m-auto" />
+        {/* Right Side: Robot Container */}
+        <div className="w-full lg:w-[50%] h-[350px] md:h-[500px] lg:h-[700px] relative flex justify-center items-center z-10">
+          {/* Ambient Background Glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-600/20 blur-[100px] lg:blur-[140px] rounded-full z-0 w-[80%] h-[80%]" />
 
-          {/* Spline container with increased scale */}
-          <div className="w-full h-full relative z-10 scale-[1.3] md:scale-[1.6] lg:scale-[2] xl:scale-[2.2] flex items-center justify-center -mt-8 md:-mt-12 lg:mt-0">
-            <SplineRobot robotState="idle" className="w-full h-full drop-shadow-2xl" />
+          {/* High-Resolution Expanded Wrapper for Spline */}
+          <div className="absolute top-1/2 left-1/2 w-[450px] h-[450px] md:w-[600px] md:h-[600px] lg:w-[700px] lg:h-[700px] xl:w-[800px] xl:h-[800px] pointer-events-auto animate-float-hero spline-wrapper z-10">
+            <SplineRobot robotState="idle" className="w-full h-full drop-shadow-[0_0_40px_rgba(59,130,246,0.3)]" />
           </div>
         </div>
       </section>
