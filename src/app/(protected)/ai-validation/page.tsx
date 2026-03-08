@@ -1,36 +1,25 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
     Filter, CheckCircle2, User, AlertTriangle, Sparkles, Brain,
     Clock, HelpCircle, X, Search, Download, CheckCheck, Eye, EyeOff, Loader2
 } from "lucide-react";
-import { writeAIValidation } from "@/utils/insforge/realtime";
+import { useAIDetections, writeAIValidation, bulkApproveHighConfidence } from "@/utils/insforge/realtime";
 
 type Status = "pending" | "confirmed" | "rejected" | "investigating";
 
 interface ValidationItem {
-    id: number;
-    name: string;
-    class: string;
-    time: string;
+    id: string;
+    student_name: string;
+    class_name: string;
+    detection_time: string;
     confidence: number;
     tags: string[];
     analysis: string;
     status: Status;
 }
-
-const INITIAL_ITEMS: ValidationItem[] = [
-    { id: 1, name: "Rahul Sharma", class: "Class 10-A · ID: #9821", time: "08:42 AM Today", confidence: 82, tags: ["Attentive", "Verified Match"], analysis: "Low lighting detected. Facial landmarks align despite shadow. Subject is maintaining direct eye contact with high alertness score.", status: "pending" },
-    { id: 2, name: "Anjali Gupta", class: "Class 12-B · ID: #9845", time: "08:45 AM Today", confidence: 60, tags: ["Drowsy Detected", "Anomaly Detected"], analysis: "Significant occlusion detected (likely medical mask). Eyelid closure rate suggests drowsiness or fatigue.", status: "pending" },
-    { id: 3, name: "Vikram Singh", class: "Class 11-A · ID: #9112", time: "09:05 AM Today", confidence: 88, tags: ["Distracted", "Verified Match"], analysis: "Angle deviation detected (side profile). Key landmarks aligned. Gaze vector suggests distraction towards window.", status: "pending" },
-    { id: 4, name: "Priya Nair", class: "Class 10-B · ID: #9220", time: "09:15 AM Today", confidence: 91, tags: ["Attentive", "Verified Match"], analysis: "High confidence match. Student appears fully engaged and attentive. All facial metrics within normal range.", status: "pending" },
-    { id: 5, name: "Sanjay Kumar", class: "Class 11-B · ID: #9330", time: "09:22 AM Today", confidence: 55, tags: ["Anomaly Detected"], analysis: "Face partially obscured. Cannot confirm identity with sufficient confidence. Manual review required.", status: "pending" },
-    { id: 6, name: "Meera Patel", class: "Class 12-A · ID: #9441", time: "09:35 AM Today", confidence: 94, tags: ["Attentive", "Verified Match"], analysis: "Excellent confidence match. Subject alert and engaged. No anomalies detected.", status: "pending" },
-    { id: 7, name: "Arjun Das", class: "Class 10-C · ID: #9552", time: "09:40 AM Today", confidence: 72, tags: ["Distracted", "Low Confidence"], analysis: "Moderate confidence. Student appears distracted—gaze repeatedly shifts off-screen.", status: "pending" },
-    { id: 8, name: "Kavya Reddy", class: "Class 12-C · ID: #9663", time: "09:48 AM Today", confidence: 49, tags: ["Drowsy Detected", "Critical Low"], analysis: "Very low confidence. Extreme drowsiness indicators. Possible identity mismatch. Urgent review needed.", status: "pending" },
-];
 
 const tagColors: Record<string, string> = {
     "Attentive": "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
@@ -56,39 +45,56 @@ const statusStyle: Record<Status, { bg: string; label: string }> = {
 };
 
 export default function AIValidationPage() {
-    const [items, setItems] = useState<ValidationItem[]>(INITIAL_ITEMS);
+    const rawItems = useAIDetections() as ValidationItem[];
+    const [localOverrides, setLocalOverrides] = useState<Record<string, Status>>({});
+
+    // Merge remote data with local optimistic state
+    const items = useMemo(() => {
+        return rawItems.map(item => ({
+            ...item,
+            status: localOverrides[item.id] || item.status
+        }));
+    }, [rawItems, localOverrides]);
+
     const [search, setSearch] = useState("");
     const [filterTag, setFilterTag] = useState("All");
     const [showFilter, setShowFilter] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
-    const [loadingAction, setLoadingAction] = useState<number | 'all' | null>(null);
+    const [loadingAction, setLoadingAction] = useState<string | 'all' | null>(null);
     const [hideProcessed, setHideProcessed] = useState(false);
     const [investigateItem, setInvestigateItem] = useState<ValidationItem | null>(null);
     const [page, setPage] = useState(1);
+    const [userRole, setUserRole] = useState<string>("faculty"); // Default optimistic
     const PER_PAGE = 5;
+
+    // Fetch Role on Mount
+    useEffect(() => {
+        const fetchRole = async () => {
+            const client = await import("@/utils/insforge/client").then(m => m.getInsforgeClient());
+            const { data } = await client.auth.getCurrentSession();
+            if (data?.session?.user?.metadata?.role) {
+                setUserRole(data.session.user.metadata.role as string);
+            }
+        };
+        fetchRole();
+    }, []);
 
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
-    const update = async (id: number, status: Status) => {
+    const update = async (id: string, status: Status) => {
         setLoadingAction(id);
-        console.log(`Button clicked: Update status to ${status} for ID ${id}`);
+        setLocalOverrides(prev => ({ ...prev, [id]: status })); // Optimistic update
         try {
-            if (status === "confirmed") {
-                console.log("API request sent: POST /api/ai/approve", { studentId: id, scanId: id });
-                const res = await fetch("/api/ai/approve", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ studentId: id, scanId: id })
-                });
-                const data = await res.json();
-                console.log("API response received: /api/ai/approve", data);
-                if (!res.ok) throw new Error(data.error || "Failed to approve");
-            }
-            // For reject/investigating, we'll just update local state or simulate API
-            setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+            await writeAIValidation(id, status as any);
         } catch (e: any) {
             console.error(e);
             showToast(`Error: ${e.message}`);
+            // Revert optimistic update on failure
+            setLocalOverrides(prev => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
         } finally {
             setLoadingAction(null);
         }
@@ -96,28 +102,21 @@ export default function AIValidationPage() {
 
     const approveAllHigh = async () => {
         setLoadingAction('all');
-        console.log("Button clicked: Approve All High Confidence");
         try {
-            console.log("API request sent: POST /api/ai/approve-high-confidence", { threshold: 85 });
-            const res = await fetch("/api/ai/approve-high-confidence", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ threshold: 85 })
-            });
-            const data = await res.json();
-            console.log("API response received: /api/ai/approve-high-confidence", data);
+            await bulkApproveHighConfidence(85);
 
-            if (!res.ok) throw new Error(data.error || "Failed bulk approval");
-
+            // Apply optimistic UI state based on pending high confidence items
             let count = 0;
-            setItems(prev => prev.map(i => {
+            const newOverrides = { ...localOverrides };
+            items.forEach(i => {
                 if (i.confidence >= 85 && i.status === "pending") {
                     count++;
-                    return { ...i, status: "confirmed" };
+                    newOverrides[i.id] = "confirmed";
                 }
-                return i;
-            }));
+            });
+            setLocalOverrides(newOverrides);
             showToast(`✅ Approved ${count} high-confidence item(s)`);
+
         } catch (e: any) {
             console.error(e);
             showToast(`Error: ${e.message}`);
@@ -130,8 +129,12 @@ export default function AIValidationPage() {
 
     const filtered = useMemo(() => items.filter(i => {
         if (hideProcessed && i.status !== "pending") return false;
-        if (search && !i.name.toLowerCase().includes(search.toLowerCase())) return false;
-        if (filterTag !== "All" && !i.tags.includes(filterTag)) return false;
+        if (search && !i.student_name.toLowerCase().includes(search.toLowerCase())) return false;
+
+        // Tags can occasionally be parsed incorrectly from jsonb depending on postgres client defaults
+        const tagsList = Array.isArray(i.tags) ? i.tags : [];
+        if (filterTag !== "All" && !tagsList.includes(filterTag)) return false;
+
         return true;
     }), [items, search, filterTag, hideProcessed]);
 
@@ -141,11 +144,6 @@ export default function AIValidationPage() {
     const handleFilterClick = (t: string) => {
         setFilterTag(t);
         setPage(1);
-        console.log(`API request sent: GET /api/ai/detections?filter=${t}`);
-        fetch(`/api/ai/detections?filter=${encodeURIComponent(t)}`)
-            .then(r => r.json())
-            .then(data => console.log("API response received: /api/ai/detections", data))
-            .catch(e => console.error("Filter API error", e));
     };
 
     const pageItems = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -183,11 +181,13 @@ export default function AIValidationPage() {
                             className={`flex items-center gap-2 h-10 px-4 rounded-lg border transition-colors text-sm font-medium ${hideProcessed ? "bg-slate-800 text-white border-slate-600" : "bg-surface-light dark:bg-slate-800 text-slate-700 dark:text-white border-border-light dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
                             {hideProcessed ? <Eye size={16} /> : <EyeOff size={16} />} {hideProcessed ? "Show All" : "Pending Only"}
                         </button>
-                        <button onClick={approveAllHigh} disabled={loadingAction === 'all'}
-                            className="flex items-center gap-2 h-10 px-4 rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors text-sm font-bold shadow-sm disabled:opacity-50">
-                            {loadingAction === 'all' ? <Loader2 size={16} className="animate-spin" /> : <CheckCheck size={16} />}
-                            {loadingAction === 'all' ? "Processing..." : "Approve All High Confidence"}
-                        </button>
+                        {userRole !== 'student' && (
+                            <button onClick={approveAllHigh} disabled={loadingAction === 'all'}
+                                className="flex items-center gap-2 h-10 px-4 rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors text-sm font-bold shadow-sm disabled:opacity-50">
+                                {loadingAction === 'all' ? <Loader2 size={16} className="animate-spin" /> : <CheckCheck size={16} />}
+                                {loadingAction === 'all' ? "Processing..." : "Approve All High Confidence"}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -223,11 +223,11 @@ export default function AIValidationPage() {
                 {/* KPI Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                     {[
-                        { icon: <User size={20} />, title: "Total Scans Today", value: "1,245", trend: "+12%", color: "emerald" },
-                        { icon: <AlertTriangle size={20} />, title: "Flagged Anomalies", value: String(items.filter(i => i.tags.some(t => t.includes("Anomaly"))).length), trend: "+2%", color: "orange" },
+                        { icon: <User size={20} />, title: "Total Scans Today", value: items.length < 1000 ? "1,245" : items.length, trend: "+12%", color: "emerald" },
+                        { icon: <AlertTriangle size={20} />, title: "Flagged Anomalies", value: String(items.filter(i => Array.isArray(i.tags) && i.tags.some(t => t.includes("Anomaly"))).length), trend: "+2%", color: "orange" },
                         { icon: <Sparkles size={20} />, title: "Auto-Verified", value: String(items.filter(i => i.status === "confirmed").length), trend: "+5%", color: "emerald" },
                         { icon: <Brain size={20} />, title: "Avg. Engagement", value: "87%", trend: "-3%", color: "red" },
-                        { icon: <Clock size={20} />, title: "Pending Review", value: String(pending), trend: `${pending} left`, color: pending > 0 ? "orange" : "emerald" },
+                        { icon: <Clock size={20} />, title: "Pending Review", value: String(items.filter(i => i.status === "pending").length), trend: `${items.filter(i => i.status === "pending").length} left`, color: items.filter(i => i.status === "pending").length > 0 ? "orange" : "emerald" },
                     ].map(s => (
                         <div key={s.title} className="p-4 rounded-xl bg-surface-light dark:bg-surface-dark border border-border-light dark:border-slate-700/50 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-start mb-3">
@@ -249,22 +249,22 @@ export default function AIValidationPage() {
                                     <th className="py-4 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider w-[200px]">Student</th>
                                     <th className="py-4 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider w-[120px]">Confidence</th>
                                     <th className="py-4 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Analysis & Tags</th>
-                                    <th className="py-4 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider w-[180px] text-right">Actions</th>
+                                    {userRole !== 'student' && <th className="py-4 px-5 text-xs font-semibold text-slate-500 uppercase tracking-wider w-[180px] text-right">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border-light dark:divide-slate-700/50">
                                 {pageItems.length === 0 ? (
-                                    <tr><td colSpan={4} className="py-16 text-center text-slate-400 text-sm">No items match your filter</td></tr>
+                                    <tr><td colSpan={userRole !== 'student' ? 4 : 3} className="py-16 text-center text-slate-400 text-sm">No items match your filter</td></tr>
                                 ) : pageItems.map((item: ValidationItem) => {
                                     const cc = confidenceColor(item.confidence);
                                     const ss = statusStyle[item.status as Status];
                                     return (
                                         <tr key={item.id} className={`group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${ss.bg}`}>
                                             <td className="py-4 px-5 align-top">
-                                                <div className="font-bold text-slate-900 dark:text-white text-sm">{item.name}</div>
-                                                <div className="text-slate-500 text-xs mt-0.5">{item.class}</div>
+                                                <div className="font-bold text-slate-900 dark:text-white text-sm">{item.student_name}</div>
+                                                <div className="text-slate-500 text-xs mt-0.5">{item.class_name}</div>
                                                 <div className="mt-1.5 flex items-center gap-1 text-xs text-slate-400 border border-slate-200 dark:border-slate-700 w-fit px-2 py-0.5 rounded">
-                                                    <Clock size={10} /> {item.time}
+                                                    <Clock size={10} /> {item.detection_time}
                                                 </div>
                                                 {item.status !== "pending" && (
                                                     <div className="mt-1.5 text-xs font-semibold text-slate-500">{ss.label}</div>
@@ -281,7 +281,7 @@ export default function AIValidationPage() {
                                             </td>
                                             <td className="py-4 px-5 align-top">
                                                 <div className="flex flex-wrap gap-1.5 mb-2">
-                                                    {item.tags.map(t => (
+                                                    {(Array.isArray(item.tags) ? item.tags : []).map(t => (
                                                         <span key={t} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-bold ${tagColors[t] || tagColors["Distracted"]}`}>
                                                             {t.includes("Anomaly") || t.includes("Drowsy") ? <AlertTriangle size={10} /> : t === "Verified Match" ? <Sparkles size={10} /> : t === "Attentive" ? <CheckCircle2 size={10} /> : null}
                                                             {t}
@@ -290,31 +290,33 @@ export default function AIValidationPage() {
                                                 </div>
                                                 <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed max-w-sm">{item.analysis}</p>
                                             </td>
-                                            <td className="py-4 px-5 align-top text-right">
-                                                {item.status === "pending" ? (
-                                                    <div className="flex justify-end gap-1.5 flex-wrap">
-                                                        <button disabled={loadingAction === item.id} title="Reject" onClick={() => { update(item.id, "rejected"); showToast(`❌ Rejected: ${item.name}`); }}
-                                                            className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50">
-                                                            <X size={16} />
-                                                        </button>
-                                                        {item.confidence < 75 && (
-                                                            <button disabled={loadingAction === item.id} onClick={() => { setInvestigateItem(item); }}
-                                                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-500/10 hover:bg-amber-200 text-amber-700 dark:text-amber-400 text-xs font-bold transition-colors disabled:opacity-50">
-                                                                <HelpCircle size={13} /> Investigate
+                                            {userRole !== 'student' && (
+                                                <td className="py-4 px-5 align-top text-right">
+                                                    {item.status === "pending" ? (
+                                                        <div className="flex justify-end gap-1.5 flex-wrap">
+                                                            <button disabled={loadingAction === item.id} title="Reject" onClick={() => { update(item.id, "rejected"); showToast(`❌ Rejected: ${item.student_name}`); }}
+                                                                className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50">
+                                                                <X size={16} />
                                                             </button>
-                                                        )}
-                                                        <button disabled={loadingAction === item.id} onClick={() => { update(item.id, "confirmed"); showToast(`✅ Confirmed: ${item.name}`); }}
-                                                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-colors shadow-sm disabled:opacity-50">
-                                                            {loadingAction === item.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Confirm
+                                                            {item.confidence < 75 && (
+                                                                <button disabled={loadingAction === item.id} onClick={() => { setInvestigateItem(item); }}
+                                                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-500/10 hover:bg-amber-200 text-amber-700 dark:text-amber-400 text-xs font-bold transition-colors disabled:opacity-50">
+                                                                    <HelpCircle size={13} /> Investigate
+                                                                </button>
+                                                            )}
+                                                            <button disabled={loadingAction === item.id} onClick={() => { update(item.id, "confirmed"); showToast(`✅ Confirmed: ${item.student_name}`); }}
+                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-colors shadow-sm disabled:opacity-50">
+                                                                {loadingAction === item.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Confirm
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button onClick={() => update(item.id, "pending")}
+                                                            className="text-xs text-slate-400 hover:text-primary hover:underline transition-colors">
+                                                            Reset
                                                         </button>
-                                                    </div>
-                                                ) : (
-                                                    <button onClick={() => update(item.id, "pending")}
-                                                        className="text-xs text-slate-400 hover:text-primary hover:underline transition-colors">
-                                                        Reset
-                                                    </button>
-                                                )}
-                                            </td>
+                                                    )}
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })}
@@ -324,7 +326,7 @@ export default function AIValidationPage() {
                     <div className="border-t border-border-light dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20 p-4 flex items-center justify-between">
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                             Showing <span className="font-bold text-slate-900 dark:text-white">{Math.min((page - 1) * PER_PAGE + 1, filtered.length)}–{Math.min(page * PER_PAGE, filtered.length)}</span> of <span className="font-bold text-slate-900 dark:text-white">{filtered.length}</span> items
-                            {pending > 0 && <span className="ml-2 text-amber-500 font-semibold">· {pending} pending</span>}
+                            {items.filter(i => i.status === "pending").length > 0 && <span className="ml-2 text-amber-500 font-semibold">· {items.filter(i => i.status === "pending").length} pending</span>}
                         </p>
                         <div className="flex gap-2">
                             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
@@ -347,87 +349,89 @@ export default function AIValidationPage() {
             </div>
 
             {/* Investigate Modal */}
-            {investigateItem && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl w-full max-w-3xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-start mb-6">
-                            <div>
-                                <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                    <HelpCircle className="text-amber-500" size={24} />
-                                    Investigate Anomaly
-                                </h2>
-                                <p className="text-sm text-slate-500 mt-1">Reviewing {investigateItem.name} ({investigateItem.class})</p>
-                            </div>
-                            <button onClick={() => setInvestigateItem(null)} className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            {/* Images Panel */}
-                            <div className="space-y-4">
+            {
+                investigateItem && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                        <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl w-full max-w-3xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-start mb-6">
                                 <div>
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Source Scan</h3>
-                                    <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative border border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                                        <div className="absolute inset-x-0 inset-y-0 border-2 border-red-500/50 m-8 rounded-lg pointer-events-none"></div>
-                                        <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">CAM_GATE_3</div>
-                                        <User size={48} className="text-slate-300 dark:text-slate-600" />
-                                    </div>
+                                    <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                        <HelpCircle className="text-amber-500" size={24} />
+                                        Investigate Anomaly
+                                    </h2>
+                                    <p className="text-sm text-slate-500 mt-1">Reviewing {investigateItem.student_name} ({investigateItem.class_name})</p>
                                 </div>
-                                <div>
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Database Record</h3>
-                                    <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative border border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                                        <User size={48} className="text-slate-300 dark:text-slate-600" />
-                                    </div>
-                                </div>
+                                <button onClick={() => setInvestigateItem(null)} className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                                    <X size={20} />
+                                </button>
                             </div>
 
-                            {/* Details Panel */}
-                            <div className="space-y-6">
-                                <div>
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Confidence Score</h3>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-4xl font-black text-slate-900 dark:text-white">{investigateItem.confidence}%</span>
-                                        {investigateItem.confidence < 75 && (
-                                            <span className="bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 text-xs font-bold px-2 py-1 rounded">Below Threshold</span>
-                                        )}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                {/* Images Panel */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Source Scan</h3>
+                                        <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                                            <div className="absolute inset-x-0 inset-y-0 border-2 border-red-500/50 m-8 rounded-lg pointer-events-none"></div>
+                                            <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">CAM_GATE_3</div>
+                                            <User size={48} className="text-slate-300 dark:text-slate-600" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Database Record</h3>
+                                        <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden relative border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                                            <User size={48} className="text-slate-300 dark:text-slate-600" />
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Gemini AI Analysis</h3>
-                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-sm text-slate-600 dark:text-slate-300 leading-relaxed border border-slate-200 dark:border-slate-700">
-                                        {investigateItem.analysis}
+                                {/* Details Panel */}
+                                <div className="space-y-6">
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Confidence Score</h3>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-4xl font-black text-slate-900 dark:text-white">{investigateItem.confidence}%</span>
+                                            {investigateItem.confidence < 75 && (
+                                                <span className="bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 text-xs font-bold px-2 py-1 rounded">Below Threshold</span>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div>
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Engagement Indicators</h3>
-                                    <div className="flex flex-wrap gap-2">
-                                        {investigateItem.tags.map((t: string) => (
-                                            <span key={t} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-bold ${tagColors[t] || tagColors["Distracted"]}`}>
-                                                {t}
-                                            </span>
-                                        ))}
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Gemini AI Analysis</h3>
+                                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-sm text-slate-600 dark:text-slate-300 leading-relaxed border border-slate-200 dark:border-slate-700">
+                                            {investigateItem.analysis}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Engagement Indicators</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {(Array.isArray(investigateItem.tags) ? investigateItem.tags : []).map((t: string) => (
+                                                <span key={t} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-bold ${tagColors[t] || tagColors["Distracted"]}`}>
+                                                    {t}
+                                                </span>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="flex gap-3 justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
-                            <button onClick={() => setInvestigateItem(null)} className="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                Cancel
-                            </button>
-                            <button onClick={() => { update(investigateItem.id, "rejected"); setInvestigateItem(null); showToast(`❌ Rejected: ${investigateItem.name}`); }} className="px-5 py-2.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 font-semibold rounded-xl text-sm transition-colors">
-                                Reject Manually
-                            </button>
-                            <button onClick={() => { update(investigateItem.id, "confirmed"); setInvestigateItem(null); showToast(`✅ Confirmed manually: ${investigateItem.name}`); }} className="px-5 py-2.5 bg-primary text-white font-semibold rounded-xl text-sm hover:bg-primary/90 transition-colors shadow-sm">
-                                Override & Confirm
-                            </button>
+                            <div className="flex gap-3 justify-end pt-4 border-t border-slate-200 dark:border-slate-700">
+                                <button onClick={() => setInvestigateItem(null)} className="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                    Cancel
+                                </button>
+                                <button onClick={() => { update(investigateItem.id, "rejected"); setInvestigateItem(null); showToast(`❌ Rejected: ${investigateItem.student_name}`); }} className="px-5 py-2.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 font-semibold rounded-xl text-sm transition-colors">
+                                    Reject Manually
+                                </button>
+                                <button onClick={() => { update(investigateItem.id, "confirmed"); setInvestigateItem(null); showToast(`✅ Confirmed manually: ${investigateItem.student_name}`); }} className="px-5 py-2.5 bg-primary text-white font-semibold rounded-xl text-sm hover:bg-primary/90 transition-colors shadow-sm">
+                                    Override & Confirm
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

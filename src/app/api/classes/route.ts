@@ -14,6 +14,7 @@ export async function POST(request: Request) {
             name: className,
             department: department,
             section: semester || null,
+            faculty_id: facultyId || null,
         });
 
         return NextResponse.json(newClass, { status: 201 });

@@ -1,48 +1,87 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Download, Search, ChevronLeft, ChevronRight, FileSpreadsheet, X, Clock, TrendingUp } from "lucide-react";
+import { getInsforgeClient } from "@/utils/insforge/client";
 
-const ALL_DATA = [
-    { id: 1, name: "Rahul Sharma", reg: "CS2023-014", class: "CS-Batch-2024-A", period: "P1", subject: "Data Structures", status: "Present", time: "09:02:14 AM", conf: 98.5 },
-    { id: 2, name: "Priya Patel", reg: "CS2023-088", class: "CS-Batch-2024-B", period: "P2", subject: "Operating Systems", status: "Absent", time: "-", conf: 0 },
-    { id: 3, name: "Arjun Das", reg: "CS2023-045", class: "CS-Batch-2024-A", period: "P1", subject: "Data Structures", status: "Present", time: "09:04:50 AM", conf: 96.2 },
-    { id: 4, name: "Meera Nair", reg: "CS2023-091", class: "CS-Batch-2024-C", period: "P3", subject: "DBMS", status: "Late", time: "10:22:11 AM", conf: 91.0 },
-    { id: 5, name: "Vikram Singh", reg: "CS2023-033", class: "CS-Batch-2024-B", period: "P2", subject: "Operating Systems", status: "Present", time: "10:01:03 AM", conf: 97.8 },
-    { id: 6, name: "Anjali Gupta", reg: "CS2023-077", class: "CS-Batch-2024-A", period: "P1", subject: "Data Structures", status: "Present", time: "09:01:22 AM", conf: 99.1 },
-    { id: 7, name: "Sanjay Kumar", reg: "CS2023-022", class: "CS-Batch-2024-C", period: "P4", subject: "Networking", status: "Absent", time: "-", conf: 0 },
-    { id: 8, name: "Kavya Reddy", reg: "CS2023-064", class: "CS-Batch-2024-B", period: "P3", subject: "DBMS", status: "Present", time: "11:02:45 AM", conf: 94.3 },
+const CLASSES = ["All Classes", "CS-Batch-A", "CS-Batch-B", "CS-Batch-C"];
+const MONTHS = [
+    "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"
 ];
 
-const PERIODS = ["All Periods", "P1 (09:00-10:00)", "P2 (10:00-11:00)", "P3 (11:00-12:00)", "P4 (12:00-01:00)"];
-const CLASSES = ["All Classes", "CS-Batch-2024-A", "CS-Batch-2024-B", "CS-Batch-2024-C"];
+const PER_PAGE = 7;
 
-const STATUS_STYLE: Record<string, string> = {
-    Present: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
-    Absent: "bg-red-100 text-red-700 dark:bg-red-400/10 dark:text-red-400",
-    Late: "bg-amber-100 text-amber-700 dark:bg-amber-400/10 dark:text-amber-400",
-};
-
-const PER_PAGE = 5;
-
-export default function PeriodReportPage() {
+export default function MonthlyReportPage() {
+    const [allData, setAllData] = useState<any[]>([]);
     const [search, setSearch] = useState("");
     const [classFilter, setClassFilter] = useState("All Classes");
-    const [periodFilter, setPeriodFilter] = useState("All Periods");
-    const [statusFilter, setStatusFilter] = useState("All");
+    const [month, setMonth] = useState(() => MONTHS[new Date().getMonth()]);
+    const [year, setYear] = useState(() => new Date().getFullYear().toString());
     const [page, setPage] = useState(1);
     const [toast, setToast] = useState<string | null>(null);
 
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
-    const filtered = useMemo(() => ALL_DATA.filter(s => {
+    useEffect(() => {
+        const client = getInsforgeClient();
+        const fetchData = async () => {
+            const currentMonthIndex = MONTHS.indexOf(month);
+            const startDate = new Date(parseInt(year), currentMonthIndex, 1).toISOString().split('T')[0];
+            const endDate = new Date(parseInt(year), currentMonthIndex + 1, 0).toISOString().split('T')[0];
+
+            const { data, error } = await (client as any).database
+                .from('attendance')
+                .select(`
+                    id,
+                    status,
+                    session_date,
+                    students ( name, register_number ),
+                    classes ( name, section, department )
+                `)
+                .gte('session_date', startDate)
+                .lte('session_date', endDate);
+
+            if (!error && data) {
+                const map = new Map();
+                data.forEach((d: any) => {
+                    const reg = d.students?.register_number || 'Unknown';
+                    if (!map.has(reg)) {
+                        map.set(reg, {
+                            id: d.id,
+                            name: d.students?.name || 'Unknown',
+                            reg,
+                            class: d.classes?.name || 'Unknown',
+                            present: 0,
+                            absent: 0,
+                            late: 0,
+                            total: 0
+                        });
+                    }
+                    const s = map.get(reg);
+                    // Avoid double counting if multiple periods on same day
+                    s.total += 1;
+                    if (d.status === 'present') s.present += 1;
+                    else if (d.status === 'absent') s.absent += 1;
+                    else if (d.status === 'late') s.late += 1;
+                });
+
+                const formatted = Array.from(map.values()).map((s: any) => ({
+                    ...s,
+                    pct: s.total > 0 ? Math.round(((s.present + s.late) / s.total) * 100) : 0
+                }));
+                formatted.sort((a, b) => a.name.localeCompare(b.name));
+                setAllData(formatted);
+            }
+        };
+        fetchData();
+    }, [month, year]);
+
+    const filtered = useMemo(() => allData.filter(s => {
         if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.reg.includes(search)) return false;
         if (classFilter !== "All Classes" && s.class !== classFilter) return false;
-        if (periodFilter !== "All Periods" && !periodFilter.startsWith(s.period)) return false;
-        if (statusFilter !== "All" && s.status !== statusFilter) return false;
         return true;
-    }), [search, classFilter, periodFilter, statusFilter]);
+    }), [allData, search, classFilter]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
     const pageData = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -56,10 +95,10 @@ export default function PeriodReportPage() {
                     <div>
                         <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
                             <Link href="/dashboard" className="hover:text-primary">Dashboard</Link><span>/</span>
-                            <span className="text-slate-900 dark:text-white font-medium">Period-Wise</span>
+                            <span className="text-slate-900 dark:text-white font-medium">Monthly Stats</span>
                         </div>
-                        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Period-Wise Attendance</h1>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1">Detailed breakdown of attendance by specific period and class</p>
+                        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Monthly Attendance</h1>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1">Aggregated monthly attendance records by student</p>
                     </div>
                     <div className="flex gap-3">
                         <button onClick={() => showToast("📥 Exporting PDF... (demo mode)")} className="flex items-center gap-2 px-4 py-2 border border-border-light dark:border-slate-700 rounded-lg text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm font-medium shadow-sm">
@@ -94,16 +133,16 @@ export default function PeriodReportPage() {
                                 {CLASSES.map(c => <option key={c}>{c}</option>)}
                             </select>
                         </div>
-                        <div className="flex-1 min-w-[180px]">
-                            <label className="label-xs block mb-1.5">Period</label>
-                            <select value={periodFilter} onChange={e => { setPeriodFilter(e.target.value); setPage(1); }} className="field-input cursor-pointer">
-                                {PERIODS.map(p => <option key={p}>{p}</option>)}
+                        <div className="flex-1 min-w-[140px]">
+                            <label className="label-xs block mb-1.5">Month</label>
+                            <select value={month} onChange={e => { setMonth(e.target.value); setPage(1); }} className="field-input cursor-pointer">
+                                {MONTHS.map(m => <option key={m}>{m}</option>)}
                             </select>
                         </div>
                         <div className="flex-1 min-w-[140px]">
-                            <label className="label-xs block mb-1.5">Status</label>
-                            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="field-input cursor-pointer">
-                                {["All", "Present", "Absent", "Late"].map(s => <option key={s}>{s}</option>)}
+                            <label className="label-xs block mb-1.5">Year</label>
+                            <select value={year} onChange={e => { setYear(e.target.value); setPage(1); }} className="field-input cursor-pointer">
+                                {["2024", "2025", "2026", "2027"].map(y => <option key={y}>{y}</option>)}
                             </select>
                         </div>
                         <div className="flex-1 min-w-[180px]">
@@ -113,7 +152,7 @@ export default function PeriodReportPage() {
                                 <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Name or Reg No." className="field-input pl-9" />
                             </div>
                         </div>
-                        <button onClick={() => { setSearch(""); setClassFilter("All Classes"); setPeriodFilter("All Periods"); setStatusFilter("All"); setPage(1); }}
+                        <button onClick={() => { setSearch(""); setClassFilter("All Classes"); setMonth(MONTHS[new Date().getMonth()]); setYear(new Date().getFullYear().toString()); setPage(1); }}
                             className="px-4 py-2.5 border border-border-light dark:border-slate-700 rounded-xl text-slate-400 hover:text-red-400 text-sm font-semibold transition-colors flex items-center gap-1.5 h-[42px]">
                             <X size={14} /> Clear
                         </button>
@@ -126,7 +165,7 @@ export default function PeriodReportPage() {
                         <table className="w-full text-left min-w-[700px]">
                             <thead className="bg-slate-50 dark:bg-slate-800/40 border-b border-border-light dark:border-slate-700">
                                 <tr>
-                                    {["Student", "Class · Period", "Subject", "Status", "Timestamp", "Confidence"].map(h => (
+                                    {["Student", "Class", "Present", "Absent", "Late", "Attendance %"].map(h => (
                                         <th key={h} className="px-5 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
                                     ))}
                                 </tr>
@@ -140,23 +179,17 @@ export default function PeriodReportPage() {
                                             <div className="font-bold text-slate-900 dark:text-white text-sm">{s.name}</div>
                                             <div className="text-xs text-slate-500 mt-0.5 font-mono">{s.reg}</div>
                                         </td>
-                                        <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">{s.class} <span className="text-xs text-slate-400">· {s.period}</span></td>
-                                        <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">{s.subject}</td>
+                                        <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">{s.class}</td>
+                                        <td className="px-5 py-4 text-sm font-semibold text-emerald-600 dark:text-emerald-400">{s.present}</td>
+                                        <td className="px-5 py-4 text-sm font-semibold text-red-600 dark:text-red-400">{s.absent}</td>
+                                        <td className="px-5 py-4 text-sm font-semibold text-amber-600 dark:text-amber-400">{s.late}</td>
                                         <td className="px-5 py-4">
-                                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold ${STATUS_STYLE[s.status]}`}>
-                                                {s.status === "Present" && <Clock size={10} />} {s.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">{s.time}</td>
-                                        <td className="px-5 py-4">
-                                            {s.conf > 0 ? (
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                                        <div className={`h-full ${s.conf >= 90 ? "bg-emerald-500" : "bg-amber-500"} rounded-full`} style={{ width: `${s.conf}%` }} />
-                                                    </div>
-                                                    <span className={`text-xs font-bold ${s.conf >= 90 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>{s.conf}%</span>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                    <div className={`h-full ${s.pct >= 75 ? "bg-emerald-500" : s.pct >= 60 ? "bg-amber-500" : "bg-red-500"} rounded-full`} style={{ width: `${s.pct}%` }} />
                                                 </div>
-                                            ) : <span className="text-slate-400 text-xs">–</span>}
+                                                <span className={`text-xs font-bold ${s.pct >= 75 ? "text-emerald-600 dark:text-emerald-400" : s.pct >= 60 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}`}>{s.pct}%</span>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

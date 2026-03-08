@@ -1,22 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Download, Search, ChevronLeft, ChevronRight, FileSpreadsheet, X, Clock } from "lucide-react";
-
-const ALL_DATA = [
-    { id: 1, name: "Rahul Sharma", reg: "CS2023-014", class: "CS-Batch-2024-A", period: "P1", subject: "Data Structures", status: "Present", time: "09:02:14 AM", conf: 98.5 },
-    { id: 2, name: "Priya Patel", reg: "CS2023-088", class: "CS-Batch-2024-B", period: "P2", subject: "Operating Systems", status: "Absent", time: "-", conf: 0 },
-    { id: 3, name: "Arjun Das", reg: "CS2023-045", class: "CS-Batch-2024-A", period: "P1", subject: "Data Structures", status: "Present", time: "09:04:50 AM", conf: 96.2 },
-    { id: 4, name: "Meera Nair", reg: "CS2023-091", class: "CS-Batch-2024-C", period: "P3", subject: "DBMS", status: "Late", time: "10:22:11 AM", conf: 91.0 },
-    { id: 5, name: "Vikram Singh", reg: "CS2023-033", class: "CS-Batch-2024-B", period: "P2", subject: "Operating Systems", status: "Present", time: "10:01:03 AM", conf: 97.8 },
-    { id: 6, name: "Anjali Gupta", reg: "CS2023-077", class: "CS-Batch-2024-A", period: "P1", subject: "Data Structures", status: "Present", time: "09:01:22 AM", conf: 99.1 },
-    { id: 7, name: "Sanjay Kumar", reg: "CS2023-022", class: "CS-Batch-2024-C", period: "P4", subject: "Networking", status: "Absent", time: "-", conf: 0 },
-    { id: 8, name: "Kavya Reddy", reg: "CS2023-064", class: "CS-Batch-2024-B", period: "P3", subject: "DBMS", status: "Present", time: "11:02:45 AM", conf: 94.3 },
-];
+import { getInsforgeClient } from "@/utils/insforge/client";
 
 const PERIODS = ["All Periods", "P1 (09:00-10:00)", "P2 (10:00-11:00)", "P3 (11:00-12:00)", "P4 (12:00-01:00)"];
-const CLASSES = ["All Classes", "CS-Batch-2024-A", "CS-Batch-2024-B", "CS-Batch-2024-C"];
+const CLASSES = ["All Classes", "CS-Batch-A", "CS-Batch-B", "CS-Batch-C"];
 
 const STATUS_STYLE: Record<string, string> = {
     Present: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
@@ -27,22 +17,62 @@ const STATUS_STYLE: Record<string, string> = {
 const PER_PAGE = 5;
 
 export default function PeriodReportPage() {
+    const [allData, setAllData] = useState<any[]>([]);
     const [search, setSearch] = useState("");
     const [classFilter, setClassFilter] = useState("All Classes");
     const [periodFilter, setPeriodFilter] = useState("All Periods");
     const [statusFilter, setStatusFilter] = useState("All");
+    const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [page, setPage] = useState(1);
     const [toast, setToast] = useState<string | null>(null);
 
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
-    const filtered = useMemo(() => ALL_DATA.filter(s => {
+    useEffect(() => {
+        const client = getInsforgeClient();
+        const fetchData = async () => {
+            const { data, error } = await (client as any).database
+                .from('attendance')
+                .select(`
+                    id,
+                    status,
+                    marked_at,
+                    session_date,
+                    period,
+                    subject,
+                    confidence,
+                    students ( name, register_number ),
+                    classes ( name, section, department )
+                `)
+                .eq('session_date', date);
+
+            if (!error && data) {
+                const formatted = data.map((d: any) => ({
+                    id: d.id,
+                    name: d.students?.name || 'Unknown',
+                    reg: d.students?.register_number || 'Unknown',
+                    class: d.classes?.name || 'Unknown',
+                    period: d.period || 'P1',
+                    subject: d.subject || 'Unknown',
+                    conf: d.confidence || 0,
+                    status: d.status.charAt(0).toUpperCase() + d.status.slice(1),
+                    time: new Date(d.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                }));
+                // Sort chronologically descending
+                formatted.sort((a: any, b: any) => new Date(`1970/01/01 ${b.time}`).getTime() - new Date(`1970/01/01 ${a.time}`).getTime());
+                setAllData(formatted);
+            }
+        };
+        fetchData();
+    }, [date]);
+
+    const filtered = useMemo(() => allData.filter(s => {
         if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.reg.includes(search)) return false;
         if (classFilter !== "All Classes" && s.class !== classFilter) return false;
         if (periodFilter !== "All Periods" && !periodFilter.startsWith(s.period)) return false;
         if (statusFilter !== "All" && s.status !== statusFilter) return false;
         return true;
-    }), [search, classFilter, periodFilter, statusFilter]);
+    }), [allData, search, classFilter, periodFilter, statusFilter]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
     const pageData = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);

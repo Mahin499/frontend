@@ -58,11 +58,12 @@ export interface Class {
     name: string;
     department: string;
     section: string | null;
+    faculty_id: string | null;
 }
 
 export async function fetchClasses(): Promise<Class[]> {
     const client = getInsforgeClient();
-    const { data, error } = await (client as any).db
+    const { data, error } = await (client as any).database
         .from('classes')
         .select('*')
         .order('name');
@@ -72,7 +73,7 @@ export async function fetchClasses(): Promise<Class[]> {
 
 export async function fetchStudentsByClass(classId: string): Promise<Student[]> {
     const client = getInsforgeClient();
-    const { data, error } = await (client as any).db
+    const { data, error } = await (client as any).database
         .from('students')
         .select('*')
         .eq('class_id', classId);
@@ -88,7 +89,7 @@ export async function enrollStudent(params: {
     face_encoding: number[];
 }): Promise<Student> {
     const client = getInsforgeClient();
-    const { data, error } = await (client as any).db
+    const { data, error } = await (client as any).database
         .from('students')
         .insert([params])
         .select()
@@ -99,7 +100,7 @@ export async function enrollStudent(params: {
 
 export async function updateStudentEncoding(studentId: string, face_encoding: number[]): Promise<void> {
     const client = getInsforgeClient();
-    const { error } = await (client as any).db
+    const { error } = await (client as any).database
         .from('students')
         .update({ face_encoding })
         .eq('id', studentId);
@@ -108,7 +109,7 @@ export async function updateStudentEncoding(studentId: string, face_encoding: nu
 
 export async function updateStudent(studentId: string, params: Partial<Pick<Student, 'name' | 'register_number' | 'class_id'>>): Promise<void> {
     const client = getInsforgeClient();
-    const { error } = await (client as any).db
+    const { error } = await (client as any).database
         .from('students')
         .update(params)
         .eq('id', studentId);
@@ -117,7 +118,7 @@ export async function updateStudent(studentId: string, params: Partial<Pick<Stud
 
 export async function deleteStudent(studentId: string): Promise<void> {
     const client = getInsforgeClient();
-    const { error } = await (client as any).db
+    const { error } = await (client as any).database
         .from('students')
         .delete()
         .eq('id', studentId);
@@ -134,15 +135,15 @@ export async function markAttendance(params: {
     sleep_score?: number;
 }): Promise<void> {
     const client = getInsforgeClient();
-    const { error } = await (client as any).db
+    const { error } = await (client as any).database
         .from('attendance')
         .insert([{ ...params, status: 'present' }]);
     if (error) throw error;
 }
 
-export async function createClass(params: { name: string; department: string; section?: string }): Promise<Class> {
+export async function createClass(params: { name: string; department: string; section?: string; faculty_id?: string }): Promise<Class> {
     const client = getInsforgeClient();
-    const { data, error } = await (client as any).db
+    const { data, error } = await (client as any).database
         .from('classes')
         .insert([params])
         .select()
@@ -151,20 +152,113 @@ export async function createClass(params: { name: string; department: string; se
     return data as Class;
 }
 
-export async function updateClass(classId: string, params: Partial<Pick<Class, 'name' | 'department' | 'section'>>): Promise<void> {
+export async function updateClass(classId: string, params: Partial<Pick<Class, 'name' | 'department' | 'section' | 'faculty_id'>>): Promise<void> {
     const client = getInsforgeClient();
-    const { error } = await (client as any).db
+    const { error } = await (client as any).database
         .from('classes')
         .update(params)
         .eq('id', classId);
     if (error) throw error;
 }
 
+export async function fetchApprovedFaculty(): Promise<{ id: string; faculty_name: string }[]> {
+    const client = getInsforgeClient();
+    const { data, error } = await (client as any).database
+        .from('faculty_approvals')
+        .select('id, faculty_name')
+        .eq('status', 'approved')
+        .order('faculty_name');
+    if (error) throw error;
+    return data || [];
+}
+
 export async function deleteClass(classId: string): Promise<void> {
     const client = getInsforgeClient();
-    const { error } = await (client as any).db
+    const { error } = await (client as any).database
         .from('classes')
         .delete()
         .eq('id', classId);
+    if (error) throw error;
+}
+
+// ─── Staff photo storage helpers ───────────────────────────────────────────
+
+/**
+ * Upload a staff photo to InsForge storage under staff/<filename>.
+ * Returns the public URL of the uploaded file.
+ */
+export async function uploadStaffPhoto(
+    userId: string,
+    file: File
+): Promise<string> {
+    const client = getInsforgeClient();
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `staff/${userId}_${Date.now()}.${ext}`;
+
+    const { data, error } = await (client as any).storage
+        .from('student-photos')
+        .upload(path, file);
+
+    if (error) throw new Error(`Upload failed: ${error.message}`);
+    if (!data?.url) throw new Error("Upload succeeded but no URL returned");
+
+    return data.url as string;
+}
+
+// ─── Institute helpers ────────────────────────────────────────────────────────
+
+export interface Institute {
+    id: string;
+    institute_name: string;
+}
+
+export async function fetchInstitutes(): Promise<Institute[]> {
+    const client = getInsforgeClient();
+    const { data, error } = await (client as any).database
+        .from('institutes')
+        .select('id, institute_name')
+        .order('institute_name');
+    if (error) throw error;
+    return (data || []) as Institute[];
+}
+
+export async function insertInstitute(params: {
+    institute_name: string;
+    principal_name?: string;
+    principal_email?: string;
+    profile_photo_url?: string;
+    face_encoding?: number[];
+}): Promise<void> {
+    const client = getInsforgeClient();
+    const { error } = await (client as any).database
+        .from('institutes')
+        .insert([params]);
+    if (error) throw error;
+}
+
+export async function fetchFacultyStatus(email: string): Promise<string | null> {
+    const client = getInsforgeClient();
+    const { data, error } = await (client as any).database
+        .from('faculty_approvals')
+        .select('status')
+        .eq('faculty_email', email)
+        .order('submitted_at', { ascending: false })
+        .limit(1);
+
+    if (error) return null;
+    return data?.[0]?.status || null;
+}
+
+export async function insertFacultyApproval(params: {
+    faculty_name: string;
+    faculty_email: string;
+    institute_id?: string | null;
+    profile_photo_url?: string;
+    face_encoding?: number[];
+}): Promise<void> {
+    const client = getInsforgeClient();
+    const { error } = await (client as any).database
+        .from('faculty_approvals')
+        .insert([{ ...params, status: 'pending' }]);
     if (error) throw error;
 }

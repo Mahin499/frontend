@@ -42,11 +42,22 @@ const aiItems = [
 ];
 
 // ─── Desktop Sidebar ────────────────────────────────────────────────────────
-export default function Sidebar() {
+export default function Sidebar({ role = "faculty" }: { role?: "principal" | "faculty" }) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
 
     const isActive = (path: string) => pathname === path;
+
+    // Filter items based on role
+    const visibleNavItems = navItems.filter(item => {
+        if (role === "faculty" && item.label === "Faculty") return false;
+        if (role === "principal" && item.label === "Live Session") return false;
+        // Meetings logic: User prompt didn't strictly say remove from Principal, but prompt requirements only listed "Dashboard, Faculty Approvals, Reports, Students, Classes, Analytics, Settings" for principal. I'm leaving Meetings out for Principal to be safe.
+        if (role === "principal" && item.label === "Meetings") return false;
+        return true;
+    });
+
+    const visibleAiItems = role === "faculty" ? aiItems : [];
 
     return (
         <>
@@ -100,7 +111,7 @@ export default function Sidebar() {
                 </div>
 
                 <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-                    {navItems.map(item => (
+                    {visibleNavItems.map(item => (
                         <NavLink key={item.href} href={item.href} icon={<item.icon size={20} />} label={item.label} active={isActive(item.href)} onClick={() => setMobileOpen(false)} />
                     ))}
                     <div className="pt-2 mt-2 border-t border-white/8">
@@ -109,12 +120,14 @@ export default function Sidebar() {
                             <NavLink key={item.href} href={item.href} icon={<item.icon size={20} />} label={item.label} active={isActive(item.href)} onClick={() => setMobileOpen(false)} />
                         ))}
                     </div>
-                    <div className="pt-2 mt-2 border-t border-white/8">
-                        <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">AI Systems</p>
-                        {aiItems.map(item => (
-                            <NavLink key={item.href} href={item.href} icon={<item.icon size={20} />} label={item.label} active={isActive(item.href)} onClick={() => setMobileOpen(false)} />
-                        ))}
-                    </div>
+                    {visibleAiItems.length > 0 && (
+                        <div className="pt-2 mt-2 border-t border-white/8">
+                            <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">AI Systems</p>
+                            {visibleAiItems.map(item => (
+                                <NavLink key={item.href} href={item.href} icon={<item.icon size={20} />} label={item.label} active={isActive(item.href)} onClick={() => setMobileOpen(false)} />
+                            ))}
+                        </div>
+                    )}
                 </nav>
 
                 <div className="p-4 border-t border-white/8">
@@ -142,7 +155,7 @@ export default function Sidebar() {
                 </div>
 
                 <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-                    {navItems.map(item => (
+                    {visibleNavItems.map(item => (
                         <NavLink key={item.href} href={item.href} icon={<item.icon size={20} />} label={item.label} active={isActive(item.href)} />
                     ))}
                     <div className="pt-2 mt-2 border-t border-border-dark">
@@ -151,12 +164,14 @@ export default function Sidebar() {
                             <NavLink key={item.href} href={item.href} icon={<item.icon size={20} />} label={item.label} active={isActive(item.href)} />
                         ))}
                     </div>
-                    <div className="pt-2 mt-2 border-t border-border-dark">
-                        <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">AI Systems</p>
-                        {aiItems.map(item => (
-                            <NavLink key={item.href} href={item.href} icon={<item.icon size={20} />} label={item.label} active={isActive(item.href)} />
-                        ))}
-                    </div>
+                    {visibleAiItems.length > 0 && (
+                        <div className="pt-2 mt-2 border-t border-border-dark">
+                            <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">AI Systems</p>
+                            {visibleAiItems.map(item => (
+                                <NavLink key={item.href} href={item.href} icon={<item.icon size={20} />} label={item.label} active={isActive(item.href)} />
+                            ))}
+                        </div>
+                    )}
                 </nav>
 
                 <div className="p-4 border-t border-border-dark">

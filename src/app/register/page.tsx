@@ -2,10 +2,10 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getInsforgeClient } from "@/utils/insforge/client";
+import { getInsforgeClient, fetchInstitutes, insertInstitute, insertFacultyApproval, uploadStaffPhoto } from "@/utils/insforge/client";
 import {
     Building2,
     School,
@@ -16,7 +16,10 @@ import {
     Camera,
     Info,
     ChevronDown,
-    Loader2
+    Loader2,
+    CheckCircle2,
+    UploadCloud,
+    X
 } from "lucide-react";
 
 export default function RegisterPage() {
@@ -40,7 +43,30 @@ export default function RegisterPage() {
     const [oauthLoading, setOauthLoading] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+    // Profile Photo specific
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [isUploadedToAI, setIsUploadedToAI] = useState(false);
+
+    // Institutes list for faculty dropdown
+    const [institutes, setInstitutes] = useState<{ id: string; institute_name: string }[]>([]);
+    const [institutesLoading, setInstitutesLoading] = useState(false);
+
     const insforge = getInsforgeClient();
+
+    // Python AI Service for embeddings
+    const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://localhost:8000";
+
+    // Load institutes from DB for the faculty dropdown
+    useEffect(() => {
+        if (role === "faculty") {
+            setInstitutesLoading(true);
+            fetchInstitutes()
+                .then(data => setInstitutes(data))
+                .catch(console.error)
+                .finally(() => setInstitutesLoading(false));
+        }
+    }, [role]);
 
     const handleOAuth = async (provider: "google" | "github") => {
         setError(null);
@@ -91,9 +117,67 @@ export default function RegisterPage() {
                 throw signUpError;
             }
 
-            // 2. After signup, store extra role/institute metadata in the user profile
+            // 2. Upload Profile Photo & Get AI Embedding if present
+            let profileUrl = undefined;
+            let faceEncoding = undefined;
+
+            if (photoFile) {
+                // Generate a temporary ID for the photo upload since user's uuid isn't easily accessible sync without another call
+                const tempId = data?.user?.id || `${Date.now()}`;
+                profileUrl = await uploadStaffPhoto(tempId, photoFile);
+
+                // Get AI embedding from the Python backend
+                try {
+                    const imgData = await new Promise<string>((res, rej) => {
+                        const reader = new FileReader();
+                        reader.onload = () => res(reader.result as string);
+                        reader.onerror = rej;
+                        reader.readAsDataURL(photoFile);
+                    });
+
+                    const aiRes = await fetch(`${AI_SERVICE_URL}/api/enroll`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ student_id: tempId, image_base64: imgData }),
+                    });
+
+                    if (aiRes.ok) {
+                        const json = await aiRes.json();
+                        if (json.success && json.encoding) {
+                            faceEncoding = json.encoding;
+                            setIsUploadedToAI(true);
+                        }
+                    }
+                } catch (err) {
+                    console.error("AI Embedding failed during registration:", err);
+                }
+            }
+
+            // 3. If Principal, persist the institute to the DB immediately after signup
+            //    regardless of email verification status
+            if (role === "principal") {
+                await insertInstitute({
+                    institute_name: instituteName.trim(),
+                    principal_name: fullName.trim(),
+                    principal_email: email.trim(),
+                    profile_photo_url: profileUrl,
+                    face_encoding: faceEncoding,
+                });
+            }
+
+            // 4. If Faculty, create a faculty_approvals record
+            if (role === "faculty") {
+                await insertFacultyApproval({
+                    faculty_name: fullName.trim(),
+                    faculty_email: email.trim(),
+                    institute_id: selectedInstitute || null,
+                    profile_photo_url: profileUrl,
+                    face_encoding: faceEncoding,
+                });
+            }
+
+            // 5. After signup, store extra role/institute metadata in the user profile
             if (data?.accessToken) {
-                // User is already signed in (email verification disabled)
                 await insforge.auth.setProfile({
                     name: fullName,
                     role: role,
@@ -101,9 +185,9 @@ export default function RegisterPage() {
                     institute_id: role === "faculty" ? selectedInstitute : null,
                 });
 
-                setSuccessMsg("Registration successful! Redirecting to your dashboard...");
+                setSuccessMsg("Registration successful! Redirecting to login...");
                 setTimeout(() => {
-                    router.push(role === "principal" ? "/dashboard" : "/faculty");
+                    router.push(role === "principal" ? "/dashboard" : "/login");
                 }, 1500);
             } else if (data?.requireEmailVerification) {
                 // Email verification required — show message, redirect to verify page
@@ -315,9 +399,15 @@ export default function RegisterPage() {
                                                     className="w-full pl-10 pr-10 py-2.5 bg-[#1c2127] border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all text-sm appearance-none"
                                                 >
                                                     <option value="" disabled>Select an institute...</option>
-                                                    <option value="inst_1">National Institute of Technology</option>
-                                                    <option value="inst_2">City Engineering College</option>
-                                                    <option value="inst_3">State University — CS Department</option>
+                                                    {institutesLoading ? (
+                                                        <option disabled>Loading institutes...</option>
+                                                    ) : institutes.length === 0 ? (
+                                                        <option disabled>No institutes registered yet</option>
+                                                    ) : (
+                                                        institutes.map(inst => (
+                                                            <option key={inst.id} value={inst.id}>{inst.institute_name}</option>
+                                                        ))
+                                                    )}
                                                 </select>
                                                 <ChevronDown className="absolute right-3 top-3 text-slate-500 w-[18px] h-[18px] pointer-events-none" />
                                             </div>
@@ -358,18 +448,63 @@ export default function RegisterPage() {
                                     {/* Photo Upload */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-300 mb-1.5">Profile Photo</label>
-                                        <div className="border-2 border-dashed border-slate-700 hover:border-primary hover:bg-primary/5 rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer transition-all">
-                                            <div className={`w-12 h-12 rounded-full bg-[#1c2127] flex items-center justify-center`}>
-                                                <Camera className={`w-6 h-6 ${role === 'principal' ? 'text-primary' : 'text-violet-400'}`} />
+                                        <label className="border-2 border-dashed border-slate-700 hover:border-primary hover:bg-primary/5 rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer transition-all relative">
+                                            {photoPreview ? (
+                                                <div className="relative w-full">
+                                                    <img src={photoPreview} alt="Preview" className="h-40 w-full object-cover rounded-lg border border-white/10" />
+                                                    <div className="absolute top-2 right-2 bg-[#1c2127] border border-white/10 rounded-full p-1 shadow-lg">
+                                                        <CheckCircle2 size={16} className="text-emerald-400" />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className={`w-12 h-12 rounded-full bg-[#1c2127] flex items-center justify-center`}>
+                                                        <Camera className={`w-6 h-6 ${role === 'principal' ? 'text-primary' : 'text-violet-400'}`} />
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-sm font-medium text-slate-300">Click to upload or drag & drop</p>
+                                                        <p className="text-xs text-slate-500 mt-1">JPG, PNG up to 5MB • Used for AI face registration</p>
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            <input
+                                                type="file"
+                                                accept="image/jpeg, image/png"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+
+                                                    if (file.size > 5 * 1024 * 1024) {
+                                                        setError("Image must be under 5MB");
+                                                        return;
+                                                    }
+
+                                                    if (!file.type.includes('png') && !file.type.includes('jpeg') && !file.type.includes('jpg')) {
+                                                        setError("Only JPG and PNG allowed");
+                                                        return;
+                                                    }
+
+                                                    setError(null);
+                                                    setPhotoFile(file);
+                                                    setPhotoPreview(URL.createObjectURL(file));
+                                                    setIsUploadedToAI(false); // Reset AI indicator until submit
+                                                }}
+                                            />
+
+                                        </label>
+
+                                        {photoPreview && (
+                                            <div className="flex items-center justify-between mt-2">
+                                                <span className={`px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full flex items-center gap-1`}>
+                                                    <span className="material-symbols-outlined text-xs">face</span> AI Face Registration Pending
+                                                </span>
+                                                <button type="button" onClick={() => { setPhotoPreview(null); setPhotoFile(null); }} className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1">
+                                                    <X size={12} /> Remove
+                                                </button>
                                             </div>
-                                            <div className="text-center">
-                                                <p className="text-sm font-medium text-slate-300">Click to upload or drag & drop</p>
-                                                <p className="text-xs text-slate-500 mt-1">JPG, PNG up to 5MB • Used for AI face registration</p>
-                                            </div>
-                                            <span className={`px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full flex items-center gap-1 mt-2`}>
-                                                <span className="material-symbols-outlined text-xs">face</span> AI Face Enrolled
-                                            </span>
-                                        </div>
+                                        )}
                                     </div>
 
                                     {/* Security/Info Notice */}

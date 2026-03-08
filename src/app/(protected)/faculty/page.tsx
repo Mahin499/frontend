@@ -6,7 +6,6 @@ import {
     Users, CheckCircle, Moon, BookOpen, Video, Clock, UserPlus,
     Eye, Meh, EyeOff, ArrowRight, CheckCircle2, XCircle, Loader2, AlertCircle
 } from "lucide-react";
-import { getInsforgeClient } from "@/utils/insforge/client";
 
 interface FacultyApproval {
     id: string;
@@ -31,19 +30,25 @@ export default function FacultyDashboardPage() {
     const [updatingId, setUpdatingId] = useState<string | null>(null);
     const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "approved" | "rejected">("all");
 
-    const client = getInsforgeClient();
-
     useEffect(() => {
-        (client as any).database.from("faculty_approvals").select("*").order("submitted_at", { ascending: false })
-            .then(({ data, error }: any) => { if (!error) setApprovals(data || []); })
+        fetch('/api/faculty-approvals')
+            .then(r => r.json())
+            .then((data: FacultyApproval[]) => setApprovals(Array.isArray(data) ? data : []))
+            .catch(console.error)
             .finally(() => setLoadingApp(false));
     }, []);
 
     const updateStatus = async (id: string, status: "approved" | "rejected" | "pending") => {
         setUpdatingId(id);
         try {
-            await (client as any).database.from("faculty_approvals").update({ status, reviewed_at: new Date().toISOString() }).eq("id", id);
+            await fetch('/api/faculty-approvals', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, status }),
+            });
             setApprovals(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+        } catch (err) {
+            console.error('Failed to update status:', err);
         } finally { setUpdatingId(null); }
     };
 

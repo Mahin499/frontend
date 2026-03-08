@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
     Search, Plus, X, Users, BookOpen, Pencil, Trash2, Loader2, CheckCircle2, AlertCircle
 } from "lucide-react";
-import { fetchClasses, createClass, updateClass, deleteClass, Class } from "@/utils/insforge/client";
+import { fetchClasses, createClass, updateClass, deleteClass, fetchApprovedFaculty, Class } from "@/utils/insforge/client";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -14,6 +14,7 @@ const SEMESTERS = ["Semester 1", "Semester 2", "Semester 3", "Semester 4", "Seme
 
 export default function ClassesManagementPage() {
     const [classes, setClasses] = useState<Class[]>([]);
+    const [facultyList, setFacultyList] = useState<{ id: string, faculty_name: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [filterDept, setFilterDept] = useState("");
@@ -34,6 +35,7 @@ export default function ClassesManagementPage() {
 
     useEffect(() => {
         loadClasses();
+        fetchApprovedFaculty().then(setFacultyList).catch(console.error);
     }, []);
 
     const loadClasses = () => {
@@ -59,8 +61,8 @@ export default function ClassesManagementPage() {
     const closeModal = () => { setModalMode(null); setEditingClass(null); setMsg(null); };
 
     const handleSave = async () => {
-        if (!formName.trim() || !formDept.trim()) {
-            setMsg({ type: "error", text: "Class name and department are required." });
+        if (!formName.trim() || !formDept.trim() || !formSection.trim() || !formFaculty.trim()) {
+            setMsg({ type: "error", text: "Please fill all required fields" });
             return;
         }
 
@@ -260,20 +262,22 @@ export default function ClassesManagementPage() {
                                     </select>
                                 </label>
                                 <label className="block">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Semester</span>
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Semester *</span>
                                     <select value={formSection} onChange={e => setFormSection(e.target.value)}
                                         className="mt-1.5 w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer">
-                                        <option value="">None</option>
+                                        <option value="">Select Semester</option>
                                         {SEMESTERS.map(s => <option key={s}>{s}</option>)}
                                     </select>
                                 </label>
                             </div>
 
                             <label className="block">
-                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Assign Faculty</span>
-                                <input type="text" value={formFaculty} onChange={e => setFormFaculty(e.target.value)}
-                                    placeholder="e.g. Prof. Rajan Kumar"
-                                    className="mt-1.5 w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" />
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Assign Faculty *</span>
+                                <select value={formFaculty} onChange={e => setFormFaculty(e.target.value)}
+                                    className="mt-1.5 w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer">
+                                    <option value="">Select Faculty</option>
+                                    {facultyList.map(f => <option key={f.id} value={f.id}>{f.faculty_name}</option>)}
+                                </select>
                             </label>
 
                             <div className="flex gap-3 pt-2">

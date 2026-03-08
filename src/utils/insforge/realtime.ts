@@ -82,16 +82,78 @@ export async function writeAIValidation(
     action: "confirmed" | "rejected" | "investigating",
     reason?: string
 ) {
-    const client = getInsforgeClient();
-    const payload: Record<string, any> = {
-        status: action === "confirmed" ? "Approved" : action === "rejected" ? "Rejected" : "Investigating",
-        reviewed_at: new Date().toISOString(),
-    };
-    if (reason) payload.rejection_reason = reason;
-    // Write to ai_validations table if it exists, silently ignore if not
     try {
-        await (client as any).database.from("ai_validations").upsert([{ id: validationId, ...payload }]);
-    } catch (_) { /* table may not exist, treat as no-op */ }
+        const response = await fetch('/api/ai-validation/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ validationId, action, reason })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to update AI validation');
+        }
+    } catch (e) {
+        console.error("Failed to update AI validation", e);
+        throw e;
+    }
+}
+
+export async function bulkApproveHighConfidence(threshold: number = 85) {
+    const client = getInsforgeClient();
+    try {
+        // Fetch all pending high-confidence items
+        const { data: items } = await (client as any).database
+            .from("ai_validations")
+            .select("id")
+            .eq("status", "pending")
+            .gte("confidence", threshold);
+
+        if (!items || items.length === 0) return;
+
+        // Process them concurrently using the new API
+        await Promise.all(
+            items.map((item: any) => writeAIValidation(item.id, "confirmed"))
+        );
+    } catch (e) {
+        console.error("Failed bulk approval", e);
+        throw e;
+    }
+}
+
+export function useAIDetections() {
+    const [items, setItems] = useState<any[]>([]);
+
+    useEffect(() => {
+        const client = getInsforgeClient();
+
+        // Initial fetch
+        const fetchDetections = async () => {
+            const { data } = await (client as any).database
+                .from("ai_validations")
+                .select("*")
+                .order("created_at", { ascending: false });
+            if (data) setItems(data);
+        };
+        fetchDetections();
+
+        const rt = (client as any).realtime;
+        if (rt) {
+            rt.connect?.();
+            rt.subscribe?.("ai-validations-channel");
+            const handler = () => {
+                fetchDetections();
+            };
+            // Listen for table updates
+            rt.on?.("update", handler);
+            return () => {
+                rt.unsubscribe?.("ai-validations-channel");
+                rt.off?.("update", handler);
+            };
+        }
+    }, []);
+
+    return items;
 }
 
 // ── Institute Settings DB persistence ─────────────────────────────────────────

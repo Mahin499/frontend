@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getInsforgeClient } from "@/utils/insforge/client";
+import { getInsforgeClient, fetchFacultyStatus } from "@/utils/insforge/client";
 import {
     Mail,
     Lock,
@@ -56,8 +56,23 @@ export default function LoginPage() {
             if (!actualRole || (actualRole !== "principal" && actualRole !== "faculty")) {
                 // Profile is incomplete — go to oauth-complete to finish setup
                 router.push("/oauth-complete");
+            } else if (actualRole === "faculty") {
+                // Check if faculty is approved
+                const status = await fetchFacultyStatus(email);
+
+                if (!status || status === 'pending') {
+                    setError("Your account is waiting for Principal approval.");
+                    setIsLoading(false);
+                    return;
+                } else if (status === 'rejected') {
+                    setError("Your faculty registration was rejected by the Principal.");
+                    setIsLoading(false);
+                    return;
+                }
+
+                router.push("/faculty");
             } else {
-                router.push(actualRole === "principal" ? "/dashboard" : "/faculty");
+                router.push("/dashboard");
             }
             router.refresh();
 

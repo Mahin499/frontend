@@ -7,21 +7,20 @@
 
 ΓÜá The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
   Creating an optimized production build ...
-Γ£ô Compiled successfully in 2.5min
+Γ£ô Compiled successfully in 8.7s
   Running TypeScript ...
   Collecting page data using 7 workers ...
-  Generating static pages using 7 workers (0/29) ...
-  Generating static pages using 7 workers (7/29) 
-  Generating static pages using 7 workers (14/29) 
-  Generating static pages using 7 workers (21/29) 
-Γ£ô Generating static pages using 7 workers (29/29) in 984.0ms
+  Generating static pages using 7 workers (0/28) ...
+  Generating static pages using 7 workers (7/28) 
+  Generating static pages using 7 workers (14/28) 
+  Generating static pages using 7 workers (21/28) 
+Γ£ô Generating static pages using 7 workers (28/28) in 972.0ms
   Finalizing page optimization ...
 
 Route (app)
 Γöî Γùï /
 Γö£ Γùï /_not-found
 Γö£ Γùï /ai-validation
-Γö£ ╞Æ /api/ai-validation/confirm
 Γö£ ╞Æ /api/ai/approve
 Γö£ ╞Æ /api/ai/approve-high-confidence
 Γö£ ╞Æ /api/ai/detections

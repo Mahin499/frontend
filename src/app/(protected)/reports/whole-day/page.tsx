@@ -1,23 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Download, Search, CalendarDays, Filter, ChevronLeft, ChevronRight, FileSpreadsheet, CheckCircle2, X } from "lucide-react";
-
-const ALL_DATA = [
-    { id: 1, name: "Rahul Sharma", reg: "CS2023-014", class: "CS-Batch-A", sem: "Sem 5", status: "Present", first: "08:45 AM", last: "03:30 PM" },
-    { id: 2, name: "Priya Patel", reg: "CS2023-088", class: "CS-Batch-B", sem: "Sem 5", status: "Absent", first: "-", last: "-" },
-    { id: 3, name: "Arjun Das", reg: "CS2023-045", class: "CS-Batch-A", sem: "Sem 5", status: "Present", first: "08:52 AM", last: "03:28 PM" },
-    { id: 4, name: "Meera Nair", reg: "CS2023-091", class: "CS-Batch-C", sem: "Sem 5", status: "Late", first: "09:45 AM", last: "03:30 PM" },
-    { id: 5, name: "Vikram Singh", reg: "CS2023-033", class: "CS-Batch-B", sem: "Sem 5", status: "Present", first: "08:41 AM", last: "03:29 PM" },
-    { id: 6, name: "Anjali Gupta", reg: "CS2023-077", class: "CS-Batch-A", sem: "Sem 5", status: "Absent", first: "-", last: "-" },
-    { id: 7, name: "Sanjay Kumar", reg: "CS2023-022", class: "CS-Batch-C", sem: "Sem 5", status: "Present", first: "08:50 AM", last: "03:25 PM" },
-    { id: 8, name: "Kavya Reddy", reg: "CS2023-064", class: "CS-Batch-B", sem: "Sem 5", status: "Late", first: "10:10 AM", last: "03:30 PM" },
-    { id: 9, name: "Rohan Menon", reg: "CS2023-018", class: "CS-Batch-A", sem: "Sem 5", status: "Present", first: "08:47 AM", last: "03:31 PM" },
-    { id: 10, name: "Sneha Iyer", reg: "CS2023-052", class: "CS-Batch-C", sem: "Sem 5", status: "Absent", first: "-", last: "-" },
-    { id: 11, name: "Dev Sharma", reg: "CS2023-003", class: "CS-Batch-B", sem: "Sem 5", status: "Present", first: "08:55 AM", last: "03:27 PM" },
-    { id: 12, name: "Anita Rao", reg: "CS2023-099", class: "CS-Batch-A", sem: "Sem 5", status: "Present", first: "08:43 AM", last: "03:30 PM" },
-];
+import { getInsforgeClient } from "@/utils/insforge/client";
 
 const STATUS_STYLE: Record<string, string> = {
     Present: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
@@ -28,20 +14,65 @@ const STATUS_STYLE: Record<string, string> = {
 const PER_PAGE = 6;
 
 export default function DailyReportPage() {
+    const [allData, setAllData] = useState<any[]>([]);
     const [search, setSearch] = useState("");
     const [dept, setDept] = useState("All Departments");
     const [statusFilter, setStatusFilter] = useState("All");
-    const [date, setDate] = useState("2026-03-03");
+    const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [page, setPage] = useState(1);
     const [toast, setToast] = useState<string | null>(null);
 
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
-    const filtered = useMemo(() => ALL_DATA.filter(s => {
+    useEffect(() => {
+        const client = getInsforgeClient();
+        const fetchData = async () => {
+            const { data, error } = await (client as any).database
+                .from('attendance')
+                .select(`
+                    id,
+                    status,
+                    marked_at,
+                    session_date,
+                    students ( name, register_number ),
+                    classes ( name, section, department )
+                `)
+                .eq('session_date', date);
+
+            if (!error && data) {
+                const formatted = data.map((d: any) => ({
+                    id: d.id,
+                    name: d.students?.name || 'Unknown',
+                    reg: d.students?.register_number || 'Unknown',
+                    class: d.classes?.name || 'Unknown',
+                    sem: d.classes?.section ? `Section ${d.classes.section}` : '',
+                    dept: d.classes?.department || 'Unknown',
+                    status: d.status.charAt(0).toUpperCase() + d.status.slice(1),
+                    first: new Date(d.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    last: new Date(d.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                }));
+                // Try to merge multiple periods for the same student
+                const mergedMap = new Map();
+                formatted.forEach((f: any) => {
+                    if (mergedMap.has(f.reg)) {
+                        const existing = mergedMap.get(f.reg);
+                        existing.last = f.last; // Assuming ordered chronologically somewhat... Ideally we sort it.
+                    } else {
+                        mergedMap.set(f.reg, f);
+                    }
+                });
+                setAllData(Array.from(mergedMap.values()));
+            }
+        };
+        fetchData();
+    }, [date]);
+
+    const filtered = useMemo(() => allData.filter(s => {
         if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.reg.includes(search)) return false;
         if (statusFilter !== "All" && s.status !== statusFilter) return false;
+        if (dept !== "All Departments" && (!s.dept || !s.dept.includes(dept))) return false;
         return true;
-    }), [search, statusFilter]);
+    }), [allData, search, statusFilter, dept]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
     const pageData = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
